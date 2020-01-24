@@ -5,19 +5,20 @@ import NamePicker from './NamePicker.js';
 import { MdSend } from "react-icons/md";
 import { BrowserRouter, Route} from 'react-router-dom'
 
-  function App() {
-    useEffect(()=>{
-      const {pathname} = window.location
-      if(pathname.length<2) window.location.pathname="home"
-    }, [])
-    return <BrowserRouter>
-      <Route path="/:room" component={Room}/>
-    </BrowserRouter>
-  }
+function App() {
+  useEffect(()=>{
+    const {pathname} = window.location
+    if(pathname.length<2) window.location.pathname="home"
+  }, [])
+  return <BrowserRouter>
+    <Route path="/:room" component={Room}/>
+  </BrowserRouter>
+}
   
-  function Room() {
+function Room(props) {
+  const {room} = props.match.params
   const [name, setName] = useState('Jordan')
-  const messages = useDB()
+  const messages = useDB(room)
 
   return <main>
 
@@ -43,7 +44,7 @@ import { BrowserRouter, Route} from 'react-router-dom'
     </div>
     <TextInput onSend={(text)=> {
       db.send({
-        text, name, ts: new Date(),
+        text, name, ts: new Date(), room
       })
     }} />
 

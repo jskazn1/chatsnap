@@ -26,6 +26,7 @@ function NamePicker(props) {
     return <div className="edit-username">
     <input value={name} ref={inputEl}
         className="name-input"
+        placeholder="Username"
         style={{display: showName ? 'none' : 'flex'}}
         onChange={e=> setName(e.target.value)}
         onKeyPress={e=> {

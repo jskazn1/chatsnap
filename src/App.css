@@ -124,7 +124,7 @@ header{
   left: 0;
   display: flex;
   flex-direction: column-reverse;
-  overflow-y: scroll;
+  overflow-y: auto;
   text-align: right;
 }
 
@@ -159,6 +159,7 @@ header{
 .message{
   position:relative;
   margin-top:10px;
+  align-items:flex-end;
 }
 
 .text-input button:disabled{
