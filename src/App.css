@@ -130,16 +130,35 @@ header{
 
 .message-wrap{
   width: 100%;
+  display: flex;
+  justify-content: flex-start;
 }
 
-.message{
+.message-wrap[from="me"]{
+  justify-content: flex-end;
+}
+
+.msg-text{
   color:white;
   background:black;
   margin: 5px;
   border-radius: 5px;
   padding: 3px 6px;
   display: inline-block;
-  right: 0;
+  word-break: break-all;
+  word-break: break-word;
+}
+
+.msg-name {
+  position: absolute;
+  font-size: 11px;
+  top:-9px;
+  left: 5px;
+}
+
+.message{
+  position:relative;
+  margin-top:10px;
 }
 
 .text-input button:disabled{
