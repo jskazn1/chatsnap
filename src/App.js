@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import './App.css';
+import './media.css';
 import {db, useDB} from './db'
 import NamePicker from './NamePicker.js';
 import { MdSend } from "react-icons/md";
@@ -9,6 +10,7 @@ import Camera from 'react-snap-pic'
 import * as firebase from "firebase/app"
 import "firebase/firestore"
 import "firebase/storage"
+import Div100vh from 'react-div-100vh'                                                                                                                                             
 
 function App() {
   useEffect(()=>{
@@ -25,13 +27,6 @@ function Room(props) {
   const [name, setName] = useState('Jordan')
   const messages = useDB(room)
   const [showCamera, setShowCamera] = useState(false)
-
-  function takePicture(){
-    takePicture = (img) => {
-      console.log(img)
-      setShowCamera(false)
-    }
-  }
   
   async function takePicture(img) {
     setShowCamera(false)
@@ -44,7 +39,7 @@ function Room(props) {
     })
   }
 
-  return <main>
+  return <Div100vh>
     
     {showCamera && <Camera takePicture={takePicture} />}
 
@@ -71,7 +66,7 @@ function Room(props) {
           text, name, ts: new Date(), room
         })
     }} />
-  </main>
+  </Div100vh>
   }
 
   const bucket = 'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
