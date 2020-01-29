@@ -1,11 +1,11 @@
 
-*{
+* {
   box-sizing:border-box;
 }
-html{
+html {
   height:100%;
 }
-body{
+body {
   font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,Helvetica,Arial,sans-serif;
   height:100%;
   display:flex;
@@ -15,7 +15,7 @@ body{
   color:black;
 }
 
-header{
+header {
   position:absolute;
   top: 0;
   left: 0;
@@ -28,7 +28,7 @@ header{
   height: 48px;
 }
 
-.edit-username{
+.edit-username {
   position: absolute;
   right: 0;
   margin-right: 10px;
@@ -36,7 +36,7 @@ header{
   align-items: center;
 }
 
-.name-button{
+.name-button {
   height:29px;
   margin:0 6px;
   background:transparent;
@@ -48,10 +48,10 @@ header{
   outline:none;
   border-radius: 4px;
 }
-.name-button:hover{
+.name-button:hover {
   background:rgba(255,255,255,0.1)
 }
-.name-input{
+.name-input {
   color:white;
   height:31px;
   border:1px solid white;
@@ -62,19 +62,19 @@ header{
   font-size:12px;
   outline:none;
 }
-.username{
+.username {
   display: flex;
   align-items: center;
   margin-right:12px;
   font-size:1.1rem;
 }
 
-.logo{
+.logo {
   height: 24px;
   margin-right: 10px;
 }
 
-.send-logo, .name-button{
+.send-logo, .name-button {
   padding: 4px;
 }
 
@@ -84,7 +84,7 @@ header{
   width: 10%;
 }
 
-.text-input{
+.text-input {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -94,29 +94,31 @@ header{
   display: flex;
 }
 
-.text-input input{
+.text-input input {
   width: 85%;
   border-radius: 20px;
   padding: 10px;
   border: 2px solid turquoise;
 }
 
-.text-input button{
+.text-input button {
   background: turquoise;
   border-radius: 20px;
   border: none;
+  margin-left: 5px;
+  margin-right: 5px;
 }
 
-.text-input input, button{
+.text-input input, button {
   height: 80%;
   margin: auto;
 }
 
-.text-input input:focus{
+.text-input input:focus {
   border: 1px solid blue
 }
 
-.messages{
+.messages {
   height: calc(100vh - 96px);
   width: 100vw;
   position: absolute;
@@ -128,17 +130,17 @@ header{
   text-align: right;
 }
 
-.message-wrap{
+.message-wrap {
   width: 100%;
   display: flex;
   justify-content: flex-start;
 }
 
-.message-wrap[from="me"]{
+.message-wrap[from="me"] {
   justify-content: flex-end;
 }
 
-.msg-text{
+.msg-text {
   color:white;
   background:black;
   margin: 5px;
@@ -156,15 +158,18 @@ header{
   left: 5px;
 }
 
-.message{
+.message {
   position:relative;
   margin-top:10px;
   align-items:flex-end;
 }
 
-.text-input button:disabled{
+.text-input button:disabled {
   background:grey;
   color: black;
   border: none;
 }
 
+.text-input > input {
+  width:calc(100% - 50px);
+}

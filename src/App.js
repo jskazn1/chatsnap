@@ -4,6 +4,9 @@ import {db, useDB} from './db'
 import NamePicker from './NamePicker.js';
 import { MdSend } from "react-icons/md";
 import { BrowserRouter, Route} from 'react-router-dom'
+import { FiSend, FiCamera } from 'react-icons/fi'
+import Camera from 'react-snap-pic'
+
 
 function App() {
   useEffect(()=>{
@@ -19,8 +22,18 @@ function Room(props) {
   const {room} = props.match.params
   const [name, setName] = useState('Jordan')
   const messages = useDB(room)
+  const [showCamera, setShowCamera] = useState(false)
 
+  function takePicture(){
+    takePicture = (img) => {
+      console.log(img)
+      setShowCamera(false)
+    }
+  }
+  
   return <main>
+    
+    {showCamera && <Camera takePicture={takePicture} />}
 
     <header> 
       <img className="logo" 
@@ -42,20 +55,25 @@ function Room(props) {
         </div>
       })}
     </div>
-    <TextInput onSend={(text)=> {
-      db.send({
-        text, name, ts: new Date(), room
-      })
+    <TextInput 
+      sendMessage={text=> props.onSend(text)} 
+      showCamera={()=>setShowCamera(true)}
+      onSend={(text)=> {
+        db.send({
+          text, name, ts: new Date(), room
+        })
     }} />
-
   </main>
   }
-
 
   function TextInput(props){
   var [text, setText] = useState('')
 
   return <div className="text-input">
+    <button onClick={props.showCamera}
+      style={{left:10, right:'auto'}}>
+      <FiCamera style={{height:15, width:15}} />
+    </button>
     <input value={text} 
       placeholder="Write your message"
       onChange={e=> setText(e.target.value)}
