@@ -6,7 +6,9 @@ import { MdSend } from "react-icons/md";
 import { BrowserRouter, Route} from 'react-router-dom'
 import { FiSend, FiCamera } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
-
+import * as firebase from "firebase/app"
+import "firebase/firestore"
+import "firebase/storage"
 
 function App() {
   useEffect(()=>{
@@ -31,6 +33,17 @@ function Room(props) {
     }
   }
   
+  async function takePicture(img) {
+    setShowCamera(false)
+    const imgID = Math.random().toString(36).substring(7)
+    var storageRef = firebase.storage().ref()
+    var ref = storageRef.child(imgID + '.jpg')
+    await ref.putString(img, 'data_url')
+    db.send({ 
+      img: imgID, name, ts: new Date(), room 
+    })
+  }
+
   return <main>
     
     {showCamera && <Camera takePicture={takePicture} />}
@@ -45,16 +58,11 @@ function Room(props) {
     </header>
 
     <div className={"messages"}>
-      {messages.map((m,i)=> {
-        return <div key={i} className="message-wrap"
-          from={m.name===name?'me':'you'}>
-          <div className="message">
-            <div className ="msg-name">{m.name}</div>
-            <div className ="msg-text">{m.text}</div>
-          </div>
-        </div>
-      })}
+      {messages.map((m,i)=> <Message key={i} 
+                                     m={m} 
+                                     name={name}/>)}
     </div>
+
     <TextInput 
       sendMessage={text=> props.onSend(text)} 
       showCamera={()=>setShowCamera(true)}
@@ -64,6 +72,22 @@ function Room(props) {
         })
     }} />
   </main>
+  }
+
+  const bucket = 'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
+  const suffix = '.jpg?alt=media'
+
+  function Message({m, name}){
+    return <div className="message-wrap"
+    from={m.name===name?'me':'you'}>
+    <div className="message">
+      <div className ="msg-name">{m.name}</div>
+      <div className ="msg-text">
+        {m.text}
+        {m.img && <img src={bucket + m.img + suffix} alt="picture" />}
+      </div>
+    </div>
+  </div>
   }
 
   function TextInput(props){
