@@ -1,15 +1,17 @@
-import React, {useState, useRef, useEffect} from 'react'
+import React, {useState, useRef, useEffect, useCallback} from 'react'
 import { FiEdit, FiSave } from 'react-icons/fi'
 
 function NamePicker(props) {
     const [name, setName] = useState('')
     const [showName, setShowName] = useState(false)
     const inputEl = useRef(null)
+    const onSaveRef = useRef(props.onSave)
+    onSaveRef.current = props.onSave
 
     function save(){
         inputEl.current.focus()
         if(name && !showName) {
-            props.onSave(name)
+            onSaveRef.current(name)
             localStorage.setItem('name', name)
         }
         setShowName(!showName)
@@ -19,7 +21,7 @@ function NamePicker(props) {
         const n = localStorage.getItem('name')
         if(n) {
             setName(n)
-            props.onSave(n)
+            onSaveRef.current(n)
             setShowName(true)
         }
     }, [])

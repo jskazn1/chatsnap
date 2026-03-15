@@ -38,13 +38,18 @@ function Room(props) {
   
   async function takePicture(img) {
     setShowCamera(false)
-    const imgID = Math.random().toString(36).substring(7)
-    var storageRef = firebase.storage().ref()
-    var ref = storageRef.child(imgID + '.jpg')
-    await ref.putString(img, 'data_url')
-    db.send({ 
-      img: imgID, name, ts: new Date(), room 
-    })
+    try {
+      setSendError(null)
+      const imgID = Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
+      const storageRef = firebase.storage().ref()
+      const ref = storageRef.child(imgID + '.jpg')
+      await ref.putString(img, 'data_url')
+      await db.send({
+        img: imgID, name, ts: new Date(), room
+      })
+    } catch (e) {
+      setSendError('Failed to send picture. Please try again.')
+    }
   }
 
   return <Div100vh>
