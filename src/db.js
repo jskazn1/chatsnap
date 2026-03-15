@@ -8,6 +8,7 @@ const coll = 'messages'
 
 function useDB(room) {
     const [messages, setMessages] = useState([])
+    const [loading, setLoading] = useState(true)
     function add(m) {
         setMessages(current => {
             const msgs = [m, ...current]
@@ -19,15 +20,21 @@ function useDB(room) {
         setMessages(current=> current.filter(m=> m.id!==id))
     }
     useEffect(() => {
-        store.collection(coll)
+        setMessages([])
+        setLoading(true)
+        const unsub = store.collection(coll)
         .where('room','==',room)
-        .onSnapshot(snap=> snap.docChanges().forEach(c=> {
-            const {doc, type} = c
-            if (type==='added') add({...doc.data(),id:doc.id})
-            if (type==='removed') remove(doc.id)
-        }))
-    }, [])
-    return messages
+        .onSnapshot(snap=> {
+            snap.docChanges().forEach(c=> {
+                const {doc, type} = c
+                if (type==='added') add({...doc.data(),id:doc.id})
+                if (type==='removed') remove(doc.id)
+            })
+            setLoading(false)
+        })
+        return unsub
+    }, [room])
+    return {messages, loading}
 }
 
 const db = {}
