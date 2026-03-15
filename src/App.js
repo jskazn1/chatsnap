@@ -24,7 +24,7 @@ function App() {
   
 function Room(props) {
   const {room} = props.match.params
-  const [name, setName] = useState('Jordan')
+  const [name, setName] = useState('')
   const messages = useDB(room)
   const [showCamera, setShowCamera] = useState(false)
   
@@ -53,13 +53,12 @@ function Room(props) {
     </header>
 
     <div className={"messages"}>
-      {messages.map((m,i)=> <Message key={i} 
-                                     m={m} 
+      {messages.map((m)=> <Message key={m.id}
+                                     m={m}
                                      name={name}/>)}
     </div>
 
-    <TextInput 
-      sendMessage={text=> props.onSend(text)} 
+    <TextInput
       showCamera={()=>setShowCamera(true)}
       onSend={(text)=> {
         db.send({
