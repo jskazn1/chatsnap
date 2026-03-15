@@ -10,6 +10,11 @@ html { /* phone */
 
 @media only screen and (min-width: 768px) {
     html { /* desktop */
-        font-size: 17px;
+        font-size: 16px;
+    }
+
+    .app-container {
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
     }
 }
