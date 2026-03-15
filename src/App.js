@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import './App.css';
 import './media.css';
 import {db, useDB} from './db'
@@ -24,19 +24,32 @@ function App() {
   
 function Room(props) {
   const {room} = props.match.params
-  const [name, setName] = useState('Jordan')
-  const messages = useDB(room)
+  const [name, setName] = useState('')
+  const {messages, loading} = useDB(room)
   const [showCamera, setShowCamera] = useState(false)
+  const [sendError, setSendError] = useState(null)
+  const messagesRef = useRef(null)
+
+  useEffect(() => {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = 0
+    }
+  }, [messages])
   
   async function takePicture(img) {
     setShowCamera(false)
-    const imgID = Math.random().toString(36).substring(7)
-    var storageRef = firebase.storage().ref()
-    var ref = storageRef.child(imgID + '.jpg')
-    await ref.putString(img, 'data_url')
-    db.send({ 
-      img: imgID, name, ts: new Date(), room 
-    })
+    try {
+      setSendError(null)
+      const imgID = Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
+      const storageRef = firebase.storage().ref()
+      const ref = storageRef.child(imgID + '.jpg')
+      await ref.putString(img, 'data_url')
+      await db.send({
+        img: imgID, name, ts: new Date(), room
+      })
+    } catch (e) {
+      setSendError('Failed to send picture. Please try again.')
+    }
   }
 
   return <Div100vh>
@@ -52,19 +65,26 @@ function Room(props) {
       <NamePicker onSave={setName} />
     </header>
 
-    <div className={"messages"}>
-      {messages.map((m,i)=> <Message key={i} 
-                                     m={m} 
+    <ul className="messages" ref={messagesRef}>
+      {loading && <li className="status-message">Loading messages...</li>}
+      {!loading && messages.length === 0 && <li className="status-message">No messages yet. Say hello!</li>}
+      {sendError && <li className="status-message error">{sendError}</li>}
+      {messages.map((m)=> <Message key={m.id}
+                                     m={m}
                                      name={name}/>)}
-    </div>
+    </ul>
 
-    <TextInput 
-      sendMessage={text=> props.onSend(text)} 
+    <TextInput
       showCamera={()=>setShowCamera(true)}
-      onSend={(text)=> {
-        db.send({
-          text, name, ts: new Date(), room
-        })
+      onSend={async (text)=> {
+        try {
+          setSendError(null)
+          await db.send({
+            text, name, ts: new Date(), room
+          })
+        } catch (e) {
+          setSendError('Failed to send message. Please try again.')
+        }
     }} />
   </Div100vh>
   }
@@ -72,9 +92,9 @@ function Room(props) {
   const bucket = 'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
   const suffix = '.jpg?alt=media'
 
-  function Message({m, name}){
-    return <div className="message-wrap"
-    from={m.name===name?'me':'you'}>
+  const Message = React.memo(function Message({m, name}){
+    return <li className="message-wrap"
+    data-from={m.name===name?'me':'you'}>
     <div className="message">
       <div className ="msg-name">{m.name}</div>
       <div className ="msg-text">
@@ -82,26 +102,38 @@ function Room(props) {
         {m.img && <img src={bucket + m.img + suffix} alt="picture" />}
       </div>
     </div>
-  </div>
-  }
+  </li>
+  })
 
   function TextInput(props){
-  var [text, setText] = useState('')
+  const [text, setText] = useState('')
+  const inputRef = useRef(null)
 
   return <div className="text-input">
     <button onClick={props.showCamera}
+      aria-label="Take a picture"
       style={{left:10, right:'auto'}}>
       <FiCamera style={{height:15, width:15}} />
     </button>
-    <input value={text} 
+    <input ref={inputRef} value={text}
+      aria-label="Message text"
       placeholder="Write your message"
       onChange={e=> setText(e.target.value)}
+      onKeyDown={e=> {
+        if(e.key === 'Enter' && text) {
+          props.onSend(text)
+          setText('')
+        }
+      }}
     />
-    <button className="send-logo" onClick={()=> {
+    <button className="send-logo"
+    aria-label="Send message"
+    onClick={()=> {
       if(text) {
         props.onSend(text)
       }
       setText('')
+      inputRef.current && inputRef.current.focus()
     }}
     disabled={!text}>
     {<MdSend />}

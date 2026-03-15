@@ -26,7 +26,7 @@ header {
   position:absolute;
   top: 0;
   left: 0;
-  width: 100vw;
+  width: 100%;
   color: black;
   padding: 10px;
   background: #ff823580;
@@ -96,7 +96,7 @@ header {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 100vw;
+  width: 100%;
   height: 48px;
   background: #ffffff80;
   display: flex;
@@ -128,7 +128,7 @@ header {
 
 .messages {
   height: calc(100vh - 96px);
-  width: 100vw;
+  width: 100%;
   position: absolute;
   top: 48px;
   left: 0;
@@ -136,6 +136,9 @@ header {
   flex-direction: column-reverse;
   overflow-y: auto;
   text-align: right;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .message-wrap {
@@ -144,7 +147,7 @@ header {
   justify-content: flex-start;
 }
 
-.message-wrap[from="me"] {
+.message-wrap[data-from="me"] {
   justify-content: flex-end;
 }
 
@@ -180,4 +183,14 @@ header {
 
 .text-input > input {
   width:calc(100% - 50px);
+}
+
+.status-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+.status-message.error {
+  color: #d32f2f;
 }
