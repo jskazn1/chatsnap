@@ -4,8 +4,8 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "site": "jordansk-chatter202020",
-    "public": "build",
+    "site": "surge-bitfit",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
