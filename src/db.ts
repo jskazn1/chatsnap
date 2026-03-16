@@ -11,7 +11,7 @@ import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: "AIzaSyCN9tbxNhqa6lnmZNMZCjD0fUWjdrrtEHY",
-  authDomain: "jordansk-chatter202020.web.app",
+  authDomain: "jordansk-chatter202020.firebaseapp.com",
   databaseURL: "https://jordansk-chatter202020.firebaseio.com",
   projectId: "jordansk-chatter202020",
   storageBucket: "jordansk-chatter202020.appspot.com",
