@@ -11,8 +11,7 @@ import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: "AIzaSyCN9tbxNhqa6lnmZNMZCjD0fUWjdrrtEHY",
-  authDomain: "jordansk-chatter202020.firebaseapp.com",
-  databaseURL: "https://jordansk-chatter202020.firebaseio.com",
+  authDomain: "surge-bitfit.web.app",
   projectId: "jordansk-chatter202020",
   storageBucket: "jordansk-chatter202020.appspot.com",
   messagingSenderId: "641423998667",
