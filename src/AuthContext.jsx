@@ -21,11 +21,23 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(null)
 
   useEffect(() => {
+    let authStateResolved = false
+    let redirectResolved = false
+
+    function tryFinishLoading() {
+      if (authStateResolved && redirectResolved) {
+        setLoading(false)
+      }
+    }
+
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
-      setLoading(false)
+      authStateResolved = true
+      tryFinishLoading()
     })
-    // Handle redirect result on page load (after Google redirects back)
+
+    // Wait for redirect result before marking as loaded
+    // This prevents briefly showing the login page after Google redirect
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) setUser(result.user)
@@ -35,6 +47,11 @@ export function AuthProvider({ children }) {
           setAuthError(err.message)
         }
       })
+      .finally(() => {
+        redirectResolved = true
+        tryFinishLoading()
+      })
+
     return unsub
   }, [])
 
