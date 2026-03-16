@@ -5,7 +5,7 @@
   },
   "hosting": {
     "site": "surge-bitfit",
-    "public": "dist",
+    "public": "build",
     "ignore": [
       "firebase.json",
       "**/.*",
