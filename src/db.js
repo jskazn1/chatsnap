@@ -24,6 +24,8 @@ function useDB(room) {
         setLoading(true)
         const unsub = store.collection(coll)
         .where('room','==',room)
+        .orderBy('ts', 'desc')
+        .limit(100)
         .onSnapshot(snap=> {
             snap.docChanges().forEach(c=> {
                 const {doc, type} = c

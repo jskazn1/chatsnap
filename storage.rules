@@ -1,7 +1,12 @@
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write;
+    match /{imageId} {
+      // Anyone can read images
+      allow read: if true;
+
+      // Only allow jpg uploads under 5MB
+      allow write: if request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
   }
 }

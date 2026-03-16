@@ -1,17 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /messages/{messageId} {
+      // Anyone can read messages
+      allow read: if true;
 
-    // This rule allows anyone on the internet to view, edit, and delete
-    // all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // your app will lose access to your Firestore database
-    match /{document=**} {
-      allow read, write;
+      // Anyone can create a message with valid fields
+      allow create: if request.resource.data.keys().hasAll(['room', 'ts', 'name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50
+        && request.resource.data.room is string
+        && request.resource.data.room.size() > 0;
+
+      // No updates allowed
+      allow update: if false;
+
+      // No deletes allowed from client
+      allow delete: if false;
     }
   }
 }

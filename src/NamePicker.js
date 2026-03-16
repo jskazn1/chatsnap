@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react'
+import React, {useState, useRef, useEffect} from 'react'
 import { FiEdit, FiSave } from 'react-icons/fi'
 
 function NamePicker(props) {
@@ -9,12 +9,17 @@ function NamePicker(props) {
     onSaveRef.current = props.onSave
 
     function save(){
-        inputEl.current.focus()
         if(name && !showName) {
             onSaveRef.current(name)
             localStorage.setItem('name', name)
         }
-        setShowName(!showName)
+        setShowName(prev => {
+            if(prev) {
+                // switching to edit mode — focus after state update
+                setTimeout(() => inputEl.current && inputEl.current.focus(), 0)
+            }
+            return !prev
+        })
     }
 
     useEffect(()=> {
@@ -32,7 +37,7 @@ function NamePicker(props) {
         placeholder="Username"
         style={{display: showName ? 'none' : 'flex'}}
         onChange={e=> setName(e.target.value)}
-        onKeyPress={e=> {
+        onKeyDown={e=> {
             if(e.key==='Enter') save()
         }}
     />

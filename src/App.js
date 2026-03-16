@@ -5,12 +5,24 @@ import {db, useDB} from './db'
 import NamePicker from './NamePicker.js';
 import { MdSend } from "react-icons/md";
 import { BrowserRouter, Route} from 'react-router-dom'
-import { FiSend, FiCamera } from 'react-icons/fi'
+import { FiCamera, FiSun, FiMoon } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
 import * as firebase from "firebase/app"
 import "firebase/firestore"
 import "firebase/storage"
-import Div100vh from 'react-div-100vh'                                                                                                                                             
+import Div100vh from 'react-div-100vh'
+
+function useTheme() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light')
+  return [theme, toggleTheme]
+}
 
 function App() {
   useEffect(()=>{
@@ -21,7 +33,7 @@ function App() {
     <Route path="/:room" component={Room}/>
   </BrowserRouter>
 }
-  
+
 function Room(props) {
   const {room} = props.match.params
   const [name, setName] = useState('')
@@ -29,13 +41,14 @@ function Room(props) {
   const [showCamera, setShowCamera] = useState(false)
   const [sendError, setSendError] = useState(null)
   const messagesRef = useRef(null)
+  const [theme, toggleTheme] = useTheme()
 
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTop = 0
     }
   }, [messages])
-  
+
   async function takePicture(img) {
     setShowCamera(false)
     try {
@@ -53,15 +66,21 @@ function Room(props) {
   }
 
   return <Div100vh>
-    
+    <div className="app-container">
+
     {showCamera && <Camera takePicture={takePicture} />}
 
-    <header> 
-      <img className="logo" 
-        alt="logo"
-        src="https://www.plantronics.com/etc/designs/plantronics/clientlib-all/img/poly-logo.png" 
-      /> 
-      Chatter
+    <header>
+      <span className="header-title">Chatter</span>
+      <span className="header-room"># {room}</span>
+      <div className="header-spacer" />
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      >
+        {theme === 'light' ? <FiMoon /> : <FiSun />}
+      </button>
       <NamePicker onSave={setName} />
     </header>
 
@@ -86,6 +105,7 @@ function Room(props) {
           setSendError('Failed to send message. Please try again.')
         }
     }} />
+    </div>
   </Div100vh>
   }
 
@@ -99,7 +119,7 @@ function Room(props) {
       <div className ="msg-name">{m.name}</div>
       <div className ="msg-text">
         {m.text}
-        {m.img && <img src={bucket + m.img + suffix} alt="picture" />}
+        {m.img && <img src={bucket + m.img + suffix} alt={m.name + "'s photo"} />}
       </div>
     </div>
   </li>
@@ -112,7 +132,7 @@ function Room(props) {
   return <div className="text-input">
     <button onClick={props.showCamera}
       aria-label="Take a picture"
-      style={{left:10, right:'auto'}}>
+      style={{background:'var(--surface-2)', color:'var(--text-muted)'}}>
       <FiCamera style={{height:15, width:15}} />
     </button>
     <input ref={inputRef} value={text}
