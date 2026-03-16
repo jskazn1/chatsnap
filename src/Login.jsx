@@ -4,7 +4,7 @@ import { FcGoogle } from 'react-icons/fc'
 import { MdEmail } from 'react-icons/md'
 
 function Login() {
-  const { loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth()
+  const { loginWithGoogle, loginWithEmail, signupWithEmail, authError } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'email-login'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,17 +37,20 @@ function Login() {
         await loginWithEmail(email, password)
       }
     } catch (err) {
-      const msg = err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'
-        ? 'Invalid email or password'
-        : err.code === 'auth/email-already-in-use'
-        ? 'An account with this email already exists'
-        : err.code === 'auth/weak-password'
-        ? 'Password must be at least 6 characters'
-        : err.message
+      const msg =
+        err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'
+          ? 'Invalid email or password'
+          : err.code === 'auth/email-already-in-use'
+          ? 'An account with this email already exists'
+          : err.code === 'auth/weak-password'
+          ? 'Password must be at least 6 characters'
+          : err.message
       setError(msg)
     }
     setSubmitting(false)
   }
+
+  const displayError = error || authError
 
   return (
     <div className="login-page">
@@ -55,7 +58,7 @@ function Login() {
         <h1 className="login-title">ChatSnap</h1>
         <p className="login-subtitle">Real-time chat &amp; photo messaging</p>
 
-        {error && <div className="login-error">{error}</div>}
+        {displayError && <div className="login-error">{displayError}</div>}
 
         {mode === 'login' && (
           <>
