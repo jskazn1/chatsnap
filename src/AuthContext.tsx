@@ -1,8 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import {
-  onAuthStateChanged, signInWithRedirect, getRedirectResult,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  updateProfile, signOut, GoogleAuthProvider, User,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  GoogleAuthProvider,
+  User,
 } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, store } from './db'
@@ -26,35 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
-    let authStateResolved = false
-    let redirectResolved = false
-
-    function tryFinishLoading() {
-      if (authStateResolved && redirectResolved) setLoading(false)
-    }
-
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
-      authStateResolved = true
-      tryFinishLoading()
+      setLoading(false)
     })
-
-    getRedirectResult(auth)
-      .then((result) => { if (result?.user) setUser(result.user) })
-      .catch((err) => {
-        if (err.code && err.code !== 'auth/no-current-user') setAuthError(err.message)
-      })
-      .finally(() => {
-        redirectResolved = true
-        tryFinishLoading()
-      })
-
     return unsub
   }, [])
 
   async function loginWithGoogle() {
     setAuthError(null)
-    await signInWithRedirect(auth, googleProvider)
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch (e: any) {
+      setAuthError(e.message)
+    }
   }
 
   async function loginWithEmail(email: string, password: string) {
@@ -64,7 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signupWithEmail(email: string, password: string, displayName: string) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName })
-    // Save user profile to Firestore
     await setDoc(doc(store, 'users', cred.user.uid), {
       displayName,
       photoURL: null,
@@ -73,7 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser({ ...cred.user, displayName } as User)
   }
 
-  async function logout() { await signOut(auth) }
+  async function logout() {
+    await signOut(auth)
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, authError, loginWithGoogle, loginWithEmail, signupWithEmail, logout }}>
