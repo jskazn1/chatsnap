@@ -159,6 +159,20 @@ export function useConversations(uid: string) {
   return { convos, loading }
 }
 
+export function useDMMessages(convoId: string | null) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    if (!convoId) { setMessages([]); setLoading(false); return }
+    const q = query(collection(db, 'conversations', convoId, 'messages'), orderBy('createdAt', 'asc'), limit(100))
+    return onSnapshot(q, snap => {
+      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage)))
+      setLoading(false)
+    })
+  }, [convoId])
+  return { messages, loading }
+}
+
 export async function createOrGetConversation(uid1: string, uid2: string): Promise<string> {
   const participants = [uid1, uid2].sort()
   const snap = await getDocs(query(collection(db, 'conversations'), where('participants', '==', participants)))
