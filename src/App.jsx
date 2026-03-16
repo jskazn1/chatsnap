@@ -7,7 +7,8 @@ import Login from './Login'
 import Profile from './Profile'
 import Sidebar from './Sidebar'
 import ChatView from './ChatView'
-import { FiSun, FiMoon, FiLogOut, FiUser, FiMenu } from 'react-icons/fi'
+import { FiSun, FiMoon, FiLogOut, FiUser, FiMenu, FiBell, FiBellOff } from 'react-icons/fi'
+import { requestNotificationPermission, onForegroundMessage } from './notifications'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
@@ -54,6 +55,28 @@ function MainApp() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [activeView, setActiveView] = useState({ type: 'room', id: 'home' })
   const [dmOtherUser, setDmOtherUser] = useState(null)
+  const [notifEnabled, setNotifEnabled] = useState(
+    () => Notification?.permission === 'granted'
+  )
+
+  useEffect(() => {
+    const unsub = onForegroundMessage((payload) => {
+      // Show in-app toast for foreground messages
+      if (payload.notification) {
+        const { title, body } = payload.notification
+        if (Notification.permission === 'granted') {
+          new Notification(title, { body })
+        }
+      }
+    })
+    return unsub
+  }, [])
+
+  async function toggleNotifications() {
+    if (notifEnabled) return // Can't programmatically revoke
+    const success = await requestNotificationPermission(user.uid)
+    setNotifEnabled(success)
+  }
 
   const roomMessages = useRoomMessages(activeView.type === 'room' ? activeView.id : null)
   const dmMessages = useDMMessages(activeView.type === 'dm' ? activeView.id : null)
@@ -99,6 +122,14 @@ function MainApp() {
           </button>
           <span className="header-title">ChatSnap</span>
           <div className="header-spacer" />
+          <button
+            className="theme-toggle"
+            onClick={toggleNotifications}
+            aria-label={notifEnabled ? 'Notifications enabled' : 'Enable notifications'}
+            title={notifEnabled ? 'Notifications on' : 'Enable notifications'}
+          >
+            {notifEnabled ? <FiBell /> : <FiBellOff />}
+          </button>
           <button
             className="theme-toggle"
             onClick={toggleTheme}
