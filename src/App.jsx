@@ -7,6 +7,7 @@ import Login from './Login'
 import Profile from './Profile'
 import Sidebar from './Sidebar'
 import ChatView from './ChatView'
+import RoomDirectory from './RoomDirectory'
 import { FiSun, FiMoon, FiLogOut, FiUser, FiMenu, FiBell, FiBellOff } from 'react-icons/fi'
 import { requestNotificationPermission, onForegroundMessage } from './notifications'
 
@@ -53,6 +54,7 @@ function MainApp() {
   const [theme, toggleTheme] = useTheme()
   const [showProfile, setShowProfile] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
+  const [showDirectory, setShowDirectory] = useState(false)
   const [activeView, setActiveView] = useState({ type: 'room', id: 'home' })
   const [dmOtherUser, setDmOtherUser] = useState(null)
   const [notifEnabled, setNotifEnabled] = useState(
@@ -61,7 +63,6 @@ function MainApp() {
 
   useEffect(() => {
     const unsub = onForegroundMessage((payload) => {
-      // Show in-app toast for foreground messages
       if (payload.notification) {
         const { title, body } = payload.notification
         if (Notification.permission === 'granted') {
@@ -73,7 +74,7 @@ function MainApp() {
   }, [])
 
   async function toggleNotifications() {
-    if (notifEnabled) return // Can't programmatically revoke
+    if (notifEnabled) return
     const success = await requestNotificationPermission(user.uid)
     setNotifEnabled(success)
   }
@@ -106,6 +107,7 @@ function MainApp() {
           activeView={activeView}
           onSelectRoom={handleSelectRoom}
           onSelectDM={handleSelectDM}
+          onOpenDirectory={() => setShowDirectory(true)}
         />
       </div>
 
@@ -165,6 +167,16 @@ function MainApp() {
           otherUser={dmOtherUser}
         />
       </div>
+
+      {showDirectory && (
+        <RoomDirectory
+          onClose={() => setShowDirectory(false)}
+          onJoinRoom={(slug) => {
+            handleSelectRoom(slug)
+            setShowDirectory(false)
+          }}
+        />
+      )}
     </div>
   )
 }

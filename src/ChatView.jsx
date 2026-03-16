@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react'
-import { db, storage, sendDM, setTyping, useTyping } from './db'
+import { db, storage, sendDM, setTyping, useTyping, useBlockedUsers, blockUser, unblockUser, reportMessage, searchMessages, pinMessage, unpinMessage, useRoomInfo } from './db'
 import { useAuth } from './AuthContext'
-import { MdSend, MdEdit, MdDelete, MdReply, MdClose, MdCheck } from 'react-icons/md'
-import { FiCamera, FiSmile } from 'react-icons/fi'
+import { MdSend, MdEdit, MdDelete, MdReply, MdClose, MdCheck, MdPushPin, MdFlag, MdBlock, MdGif } from 'react-icons/md'
+import { FiCamera, FiSmile, FiSearch, FiX, FiMic } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
 import { ref, uploadString } from 'firebase/storage'
+import MessageRenderer from './MessageRenderer'
+import GifPicker from './GifPicker'
+import { VoiceRecorder, VoicePlayer } from './VoiceMessage'
 
 const bucket =
   'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
@@ -16,14 +19,27 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
   const { user } = useAuth()
   const name = user.displayName || user.email
   const [showCamera, setShowCamera] = useState(false)
+  const [showGifPicker, setShowGifPicker] = useState(false)
   const [sendError, setSendError] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
   const [replyTo, setReplyTo] = useState(null)
+  const [searchMode, setSearchMode] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState(null)
   const messagesRef = useRef(null)
   const typingLocation = mode === 'room' ? `room:${roomName}` : `dm:${conversationId}`
   const typers = useTyping(typingLocation, user.uid)
   const typingTimeout = useRef(null)
+  const blockedUsers = useBlockedUsers(user.uid)
+  const roomInfo = useRoomInfo(mode === 'room' ? roomName : null)
+
+  const isAdmin = roomInfo?.admins?.includes(user.uid) || false
+
+  // Filter blocked users from messages
+  const visibleMessages = (searchResults || messages).filter(
+    (m) => !blockedUsers.includes(m.uid)
+  )
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -62,6 +78,46 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
       setReplyTo(null)
     } catch (e) {
       setSendError('Failed to send message. Please try again.')
+    }
+  }
+
+  async function handleSendGif(gifUrl) {
+    setShowGifPicker(false)
+    try {
+      const msgData = {
+        gif: gifUrl,
+        name,
+        uid: user.uid,
+        photoURL: user.photoURL || null,
+        ts: new Date(),
+      }
+      if (mode === 'room') {
+        await db.send({ ...msgData, room: roomName })
+      } else {
+        await sendDM(conversationId, msgData)
+      }
+    } catch {
+      setSendError('Failed to send GIF.')
+    }
+  }
+
+  async function handleSendVoice(audioUrl, duration) {
+    try {
+      const msgData = {
+        voice: audioUrl,
+        voiceDuration: duration,
+        name,
+        uid: user.uid,
+        photoURL: user.photoURL || null,
+        ts: new Date(),
+      }
+      if (mode === 'room') {
+        await db.send({ ...msgData, room: roomName })
+      } else {
+        await sendDM(conversationId, msgData)
+      }
+    } catch {
+      setSendError('Failed to send voice message.')
     }
   }
 
@@ -132,8 +188,51 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
           ? await db.unreactDM(conversationId, msgId, user.uid, emoji)
           : await db.reactDM(conversationId, msgId, user.uid, emoji)
       }
-    } catch (e) {
+    } catch {
       // silently fail reactions
+    }
+  }
+
+  async function handleReport(msg) {
+    const reason = prompt('Why are you reporting this message?')
+    if (!reason) return
+    try {
+      await reportMessage(user.uid, msg.id, reason, msg)
+      alert('Report submitted. Thank you.')
+    } catch {
+      alert('Failed to submit report.')
+    }
+  }
+
+  async function handleBlock(uid) {
+    if (blockedUsers.includes(uid)) {
+      await unblockUser(user.uid, uid)
+    } else {
+      if (confirm('Block this user? Their messages will be hidden.')) {
+        await blockUser(user.uid, uid)
+      }
+    }
+  }
+
+  async function handlePin(msg) {
+    if (!roomName) return
+    try {
+      const pinData = { id: msg.id, text: msg.text || '(media)', name: msg.name }
+      if (roomInfo?.pinnedMessages?.some((p) => p.id === msg.id)) {
+        await unpinMessage(roomName, pinData)
+      } else {
+        await pinMessage(roomName, pinData)
+      }
+    } catch {
+      setSendError('Failed to pin message.')
+    }
+  }
+
+  async function handleSearch() {
+    if (!searchTerm.trim()) { setSearchResults(null); return }
+    if (mode === 'room' && roomName) {
+      const results = await searchMessages(roomName, searchTerm.trim())
+      setSearchResults(results)
     }
   }
 
@@ -145,15 +244,52 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
 
       <div className="chat-header">
         <span className="chat-header-title">{title}</span>
+        <div className="chat-header-spacer" />
+        {mode === 'room' && (
+          <button
+            className="msg-action-btn"
+            onClick={() => { setSearchMode(!searchMode); setSearchResults(null); setSearchTerm('') }}
+            title="Search messages"
+          >
+            {searchMode ? <FiX /> : <FiSearch />}
+          </button>
+        )}
       </div>
+
+      {searchMode && (
+        <div className="search-bar">
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+            placeholder="Search messages..."
+            autoFocus
+          />
+          <button onClick={handleSearch}>Search</button>
+          {searchResults && (
+            <span className="search-count">{searchResults.length} results</span>
+          )}
+        </div>
+      )}
+
+      {roomInfo?.pinnedMessages?.length > 0 && !searchMode && (
+        <div className="pinned-bar">
+          <MdPushPin />
+          <span className="pinned-text">
+            {roomInfo.pinnedMessages[roomInfo.pinnedMessages.length - 1]?.text}
+          </span>
+        </div>
+      )}
 
       <ul className="messages" ref={messagesRef}>
         {loading && <li className="status-message">Loading messages...</li>}
-        {!loading && messages.length === 0 && (
-          <li className="status-message">No messages yet. Say hello!</li>
+        {!loading && visibleMessages.length === 0 && (
+          <li className="status-message">
+            {searchResults ? 'No matching messages' : 'No messages yet. Say hello!'}
+          </li>
         )}
         {sendError && <li className="status-message error">{sendError}</li>}
-        {messages.map((m) => (
+        {visibleMessages.map((m) => (
           <MessageItem
             key={m.id}
             m={m}
@@ -161,6 +297,10 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
             currentName={name}
             isEditing={editingId === m.id}
             editText={editText}
+            isAdmin={isAdmin}
+            isBlocked={blockedUsers.includes(m.uid)}
+            isPinned={roomInfo?.pinnedMessages?.some((p) => p.id === m.id)}
+            showPinOption={mode === 'room'}
             onEditStart={() => { setEditingId(m.id); setEditText(m.text || '') }}
             onEditChange={setEditText}
             onEditSave={() => handleEditSave(m.id)}
@@ -168,6 +308,9 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
             onDelete={() => handleDelete(m.id)}
             onReply={() => setReplyTo(m)}
             onReact={(emoji) => handleReact(m.id, emoji)}
+            onReport={() => handleReport(m)}
+            onBlock={() => handleBlock(m.uid)}
+            onPin={() => handlePin(m)}
           />
         ))}
       </ul>
@@ -190,9 +333,15 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
         </div>
       )}
 
+      {showGifPicker && (
+        <GifPicker onSelect={handleSendGif} onClose={() => setShowGifPicker(false)} />
+      )}
+
       <TextInput
         showCamera={() => setShowCamera(true)}
+        showGifPicker={() => setShowGifPicker(!showGifPicker)}
         onSend={handleSend}
+        onSendVoice={handleSendVoice}
         onTyping={handleTyping}
       />
     </div>
@@ -201,8 +350,9 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
 
 const MessageItem = memo(function MessageItem({
   m, currentUid, currentName,
-  isEditing, editText, onEditStart, onEditChange, onEditSave, onEditCancel,
-  onDelete, onReply, onReact,
+  isEditing, editText, isAdmin, isBlocked, isPinned, showPinOption,
+  onEditStart, onEditChange, onEditSave, onEditCancel,
+  onDelete, onReply, onReact, onReport, onBlock, onPin,
 }) {
   const isMe = m.uid ? m.uid === currentUid : m.name === currentName
   const [showActions, setShowActions] = useState(false)
@@ -250,9 +400,12 @@ const MessageItem = memo(function MessageItem({
           </div>
         ) : (
           <div className="msg-text">
-            {m.text}
+            {m.text && <MessageRenderer text={m.text} />}
             {m.edited && <span className="msg-edited">(edited)</span>}
             {m.img && <img src={bucket + m.img + suffix} alt={m.name + "'s photo"} />}
+            {m.gif && <img src={m.gif} alt="GIF" className="msg-gif" />}
+            {m.voice && <VoicePlayer url={m.voice} duration={m.voiceDuration} />}
+            {isPinned && <span className="msg-pin-badge"><MdPushPin /> Pinned</span>}
           </div>
         )}
 
@@ -285,10 +438,25 @@ const MessageItem = memo(function MessageItem({
                 <MdEdit />
               </button>
             )}
-            {isMe && (
+            {(isMe || isAdmin) && (
               <button onClick={onDelete} className="msg-action-btn delete" title="Delete">
                 <MdDelete />
               </button>
+            )}
+            {showPinOption && (isMe || isAdmin) && (
+              <button onClick={onPin} className="msg-action-btn" title={isPinned ? 'Unpin' : 'Pin'}>
+                <MdPushPin />
+              </button>
+            )}
+            {!isMe && (
+              <>
+                <button onClick={onReport} className="msg-action-btn" title="Report">
+                  <MdFlag />
+                </button>
+                <button onClick={onBlock} className="msg-action-btn" title={isBlocked ? 'Unblock' : 'Block'}>
+                  <MdBlock />
+                </button>
+              </>
             )}
           </div>
         )}
@@ -305,7 +473,7 @@ const MessageItem = memo(function MessageItem({
   )
 })
 
-function TextInput({ showCamera, onSend, onTyping }) {
+function TextInput({ showCamera, showGifPicker, onSend, onSendVoice, onTyping }) {
   const [text, setText] = useState('')
   const inputRef = useRef(null)
 
@@ -317,6 +485,13 @@ function TextInput({ showCamera, onSend, onTyping }) {
         style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
       >
         <FiCamera style={{ height: 15, width: 15 }} />
+      </button>
+      <button
+        onClick={showGifPicker}
+        aria-label="Send GIF"
+        style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+      >
+        <MdGif style={{ height: 20, width: 20 }} />
       </button>
       <input
         ref={inputRef}
@@ -334,20 +509,21 @@ function TextInput({ showCamera, onSend, onTyping }) {
           }
         }}
       />
-      <button
-        className="send-logo"
-        aria-label="Send message"
-        onClick={() => {
-          if (text) {
+      {text ? (
+        <button
+          className="send-logo"
+          aria-label="Send message"
+          onClick={() => {
             onSend(text)
-          }
-          setText('')
-          inputRef.current?.focus()
-        }}
-        disabled={!text}
-      >
-        <MdSend />
-      </button>
+            setText('')
+            inputRef.current?.focus()
+          }}
+        >
+          <MdSend />
+        </button>
+      ) : (
+        <VoiceRecorder onSend={onSendVoice} />
+      )}
     </div>
   )
 }

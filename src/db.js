@@ -14,6 +14,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
   onSnapshot,
   serverTimestamp,
   arrayUnion,
@@ -40,8 +41,99 @@ const auth = getAuth(app)
 
 const MESSAGES = 'messages'
 const CONVERSATIONS = 'conversations'
+const ROOMS = 'rooms'
 
-// ── Room messages (existing) ────────────────────────────────────────
+// ── Room metadata ───────────────────────────────────────────────────
+
+function useRooms() {
+  const [rooms, setRooms] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const q = query(collection(store, ROOMS), orderBy('name'))
+    const unsub = onSnapshot(q, (snap) => {
+      setRooms(snap.docs.map((d) => ({ ...d.data(), id: d.id })))
+      setLoading(false)
+    })
+    return unsub
+  }, [])
+
+  return { rooms, loading }
+}
+
+function useRoomInfo(roomId) {
+  const [room, setRoom] = useState(null)
+
+  useEffect(() => {
+    if (!roomId) return
+    const unsub = onSnapshot(doc(store, ROOMS, roomId), (snap) => {
+      if (snap.exists()) setRoom({ ...snap.data(), id: snap.id })
+      else setRoom(null)
+    })
+    return unsub
+  }, [roomId])
+
+  return room
+}
+
+async function createRoom({ name, description, isPrivate, joinCode, createdBy }) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
+  const existing = await getDocs(query(collection(store, ROOMS), where('slug', '==', slug), limit(1)))
+  if (!existing.empty) throw new Error('A room with this name already exists')
+
+  return addDoc(collection(store, ROOMS), {
+    name,
+    slug,
+    description: description || '',
+    isPrivate: isPrivate || false,
+    joinCode: isPrivate ? (joinCode || Math.random().toString(36).slice(2, 8)) : null,
+    createdBy,
+    admins: [createdBy],
+    members: [createdBy],
+    pinnedMessages: [],
+    createdAt: serverTimestamp(),
+  })
+}
+
+async function joinRoom(roomId, uid, joinCode) {
+  const snap = await getDoc(doc(store, ROOMS, roomId))
+  if (!snap.exists()) throw new Error('Room not found')
+  const data = snap.data()
+  if (data.isPrivate && data.joinCode !== joinCode) throw new Error('Invalid join code')
+  return updateDoc(doc(store, ROOMS, roomId), { members: arrayUnion(uid) })
+}
+
+async function leaveRoom(roomId, uid) {
+  return updateDoc(doc(store, ROOMS, roomId), {
+    members: arrayRemove(uid),
+    admins: arrayRemove(uid),
+  })
+}
+
+async function pinMessage(roomId, messageSnapshot) {
+  return updateDoc(doc(store, ROOMS, roomId), {
+    pinnedMessages: arrayUnion(messageSnapshot),
+  })
+}
+
+async function unpinMessage(roomId, messageSnapshot) {
+  return updateDoc(doc(store, ROOMS, roomId), {
+    pinnedMessages: arrayRemove(messageSnapshot),
+  })
+}
+
+async function kickUser(roomId, uid) {
+  return updateDoc(doc(store, ROOMS, roomId), {
+    members: arrayRemove(uid),
+    banned: arrayUnion(uid),
+  })
+}
+
+async function promoteAdmin(roomId, uid) {
+  return updateDoc(doc(store, ROOMS, roomId), { admins: arrayUnion(uid) })
+}
+
+// ── Room messages ───────────────────────────────────────────────────
 
 function useRoomMessages(room) {
   const [messages, setMessages] = useState([])
@@ -158,19 +250,14 @@ function useDMMessages(conversationId) {
 }
 
 async function createOrGetConversation(myUid, myName, myPhoto, otherUid, otherName, otherPhoto) {
-  // Check if conversation already exists
   const q = query(
     collection(store, CONVERSATIONS),
     where('participantIds', 'array-contains', myUid)
   )
   const snap = await getDocs(q)
-  const existing = snap.docs.find((d) => {
-    const data = d.data()
-    return data.participantIds.includes(otherUid)
-  })
+  const existing = snap.docs.find((d) => d.data().participantIds.includes(otherUid))
   if (existing) return existing.id
 
-  // Create new conversation
   const convoRef = await addDoc(collection(store, CONVERSATIONS), {
     participantIds: [myUid, otherUid],
     participants: {
@@ -195,7 +282,6 @@ async function sendDM(conversationId, msg) {
 // ── User search ─────────────────────────────────────────────────────
 
 async function searchUsers(searchTerm) {
-  // Simple prefix search on displayName
   const q = query(
     collection(store, 'users'),
     where('displayName', '>=', searchTerm),
@@ -204,6 +290,69 @@ async function searchUsers(searchTerm) {
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
+}
+
+// ── Message search ──────────────────────────────────────────────────
+
+async function searchMessages(room, searchTerm) {
+  // Client-side search: fetch recent messages and filter
+  const q = query(
+    collection(store, MESSAGES),
+    where('room', '==', room),
+    orderBy('ts', 'desc'),
+    limit(500)
+  )
+  const snap = await getDocs(q)
+  const term = searchTerm.toLowerCase()
+  return snap.docs
+    .map((d) => ({ ...d.data(), id: d.id }))
+    .filter((m) => m.text?.toLowerCase().includes(term) || m.name?.toLowerCase().includes(term))
+}
+
+// ── Block / Mute ────────────────────────────────────────────────────
+
+function useBlockedUsers(uid) {
+  const [blocked, setBlocked] = useState([])
+
+  useEffect(() => {
+    if (!uid) return
+    const unsub = onSnapshot(doc(store, 'users', uid), (snap) => {
+      if (snap.exists()) {
+        setBlocked(snap.data().blockedUsers || [])
+      }
+    })
+    return unsub
+  }, [uid])
+
+  return blocked
+}
+
+async function blockUser(myUid, otherUid) {
+  return updateDoc(doc(store, 'users', myUid), {
+    blockedUsers: arrayUnion(otherUid),
+  })
+}
+
+async function unblockUser(myUid, otherUid) {
+  return updateDoc(doc(store, 'users', myUid), {
+    blockedUsers: arrayRemove(otherUid),
+  })
+}
+
+// ── Reports ─────────────────────────────────────────────────────────
+
+async function reportMessage(reporterUid, messageId, reason, messageData) {
+  return addDoc(collection(store, 'reports'), {
+    reporterUid,
+    messageId,
+    reason,
+    messageText: messageData.text || null,
+    messageAuthorUid: messageData.uid,
+    messageAuthorName: messageData.name,
+    room: messageData.room || null,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
 }
 
 // ── Room message operations ─────────────────────────────────────────
@@ -259,7 +408,6 @@ db.unreactDM = function (conversationId, messageId, uid, emoji) {
 // ── Typing indicators ───────────────────────────────────────────────
 
 function setTyping(location, uid, name, isTyping) {
-  // location = "room:roomName" or "dm:conversationId"
   const ref = doc(store, 'typing', location)
   if (isTyping) {
     return setDoc(ref, { [uid]: { name, ts: new Date() } }, { merge: true })
@@ -289,18 +437,31 @@ function useTyping(location, myUid) {
   return typers
 }
 
-// Keep old export name for backwards compat
 const useDB = useRoomMessages
 
 export {
   db,
   useDB,
   useRoomMessages,
+  useRooms,
+  useRoomInfo,
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  pinMessage,
+  unpinMessage,
+  kickUser,
+  promoteAdmin,
   useConversations,
   useDMMessages,
   createOrGetConversation,
   sendDM,
   searchUsers,
+  searchMessages,
+  useBlockedUsers,
+  blockUser,
+  unblockUser,
+  reportMessage,
   setTyping,
   useTyping,
   storage,

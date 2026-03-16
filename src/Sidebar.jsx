@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from './AuthContext'
-import { useConversations, searchUsers, createOrGetConversation } from './db'
-import { FiMessageSquare, FiHash, FiSearch, FiPlus, FiX } from 'react-icons/fi'
+import { useConversations, useRooms, searchUsers, createOrGetConversation } from './db'
+import { FiMessageSquare, FiHash, FiLock, FiSearch, FiPlus, FiX, FiGrid } from 'react-icons/fi'
 
 const DEFAULT_ROOMS = ['home', 'general', 'random']
 
-function Sidebar({ activeView, onSelectRoom, onSelectDM, onNewDM }) {
+function Sidebar({ activeView, onSelectRoom, onSelectDM, onOpenDirectory }) {
   const { user } = useAuth()
   const { convos, loading } = useConversations(user.uid)
+  const { rooms, loading: roomsLoading } = useRooms()
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -47,6 +48,13 @@ function Sidebar({ activeView, onSelectRoom, onSelectDM, onNewDM }) {
     setSearchResults([])
     onSelectDM(convoId, otherUser)
   }
+
+  // Merge default rooms with dynamic Firestore rooms
+  const dynamicSlugs = rooms.map((r) => r.slug)
+  const allRoomItems = [
+    ...DEFAULT_ROOMS.map((name) => ({ slug: name, name, isDefault: true })),
+    ...rooms.filter((r) => !DEFAULT_ROOMS.includes(r.slug)),
+  ]
 
   return (
     <div className="sidebar">
@@ -95,17 +103,23 @@ function Sidebar({ activeView, onSelectRoom, onSelectDM, onNewDM }) {
       )}
 
       <div className="sidebar-section">
-        <div className="sidebar-section-label">Rooms</div>
-        {DEFAULT_ROOMS.map((room) => (
+        <div className="sidebar-section-header">
+          <span className="sidebar-section-label">Rooms</span>
+          <button className="sidebar-section-btn" onClick={onOpenDirectory} aria-label="Browse rooms">
+            <FiGrid />
+          </button>
+        </div>
+        {allRoomItems.map((room) => (
           <button
-            key={room}
-            className={`sidebar-item ${activeView.type === 'room' && activeView.id === room ? 'active' : ''}`}
-            onClick={() => onSelectRoom(room)}
+            key={room.slug}
+            className={`sidebar-item ${activeView.type === 'room' && activeView.id === room.slug ? 'active' : ''}`}
+            onClick={() => onSelectRoom(room.slug)}
           >
-            <FiHash className="sidebar-item-icon" />
-            <span className="sidebar-item-name">{room}</span>
+            {room.isPrivate ? <FiLock className="sidebar-item-icon" /> : <FiHash className="sidebar-item-icon" />}
+            <span className="sidebar-item-name">{room.name}</span>
           </button>
         ))}
+        {roomsLoading && <div className="sidebar-loading">Loading rooms...</div>}
       </div>
 
       <div className="sidebar-section">
