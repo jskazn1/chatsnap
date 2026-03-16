@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "ChatSnap",
+  "version": "1.0.0",
+  "description": "ChatSnap — real-time chat messenger",
+  "permissions": ["identity"],
+  "oauth2": {
+    "client_id": "641423998667-REPLACE_WITH_CHROME_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

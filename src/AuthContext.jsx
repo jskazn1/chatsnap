@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithCredential,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -14,6 +15,12 @@ const AuthContext = createContext(null)
 
 const googleProvider = new GoogleAuthProvider()
 
+// Check if we received a Chrome extension OAuth token via URL params
+function getChromeToken() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('chromeToken')
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -25,6 +32,19 @@ export function AuthProvider({ children }) {
     })
     return unsub
   }, [])
+
+  // Auto-sign-in if a Chrome extension token is present
+  useEffect(() => {
+    const token = getChromeToken()
+    if (token && !user) {
+      const credential = GoogleAuthProvider.credential(null, token)
+      signInWithCredential(auth, credential).catch((err) => {
+        console.error('Chrome extension auth failed:', err)
+      })
+      // Clean the URL so the token isn't lingering
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [user])
 
   async function loginWithGoogle() {
     return signInWithPopup(auth, googleProvider)
