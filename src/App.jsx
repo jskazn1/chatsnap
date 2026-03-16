@@ -5,9 +5,10 @@ import { db, storage } from './db'
 import { useDB } from './db'
 import { AuthProvider, useAuth } from './AuthContext'
 import Login from './Login'
+import Profile from './Profile'
 import { MdSend } from 'react-icons/md'
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
-import { FiCamera, FiSun, FiMoon, FiLogOut } from 'react-icons/fi'
+import { FiCamera, FiSun, FiMoon, FiLogOut, FiUser } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
 import { ref, uploadString } from 'firebase/storage'
 
@@ -60,6 +61,7 @@ function Room() {
   const name = user.displayName || user.email
   const { messages, loading } = useDB(room)
   const [showCamera, setShowCamera] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [sendError, setSendError] = useState(null)
   const messagesRef = useRef(null)
   const [theme, toggleTheme] = useTheme()
@@ -81,12 +83,17 @@ function Room() {
         img: imgID,
         name,
         uid: user.uid,
+        photoURL: user.photoURL || null,
         ts: new Date(),
         room,
       })
     } catch (e) {
       setSendError('Failed to send picture. Please try again.')
     }
+  }
+
+  if (showProfile) {
+    return <Profile onClose={() => setShowProfile(false)} />
   }
 
   return (
@@ -105,9 +112,17 @@ function Room() {
           {theme === 'light' ? <FiMoon /> : <FiSun />}
         </button>
         <div className="user-info">
-          {user.photoURL && (
-            <img src={user.photoURL} alt="" className="user-avatar-small" />
-          )}
+          <button
+            className="user-avatar-btn"
+            onClick={() => setShowProfile(true)}
+            aria-label="Edit profile"
+          >
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="" className="user-avatar-small" />
+            ) : (
+              <FiUser />
+            )}
+          </button>
           <span className="user-display-name">{name}</span>
           <button className="theme-toggle" onClick={logout} aria-label="Sign out">
             <FiLogOut />
@@ -135,6 +150,7 @@ function Room() {
               text,
               name,
               uid: user.uid,
+              photoURL: user.photoURL || null,
               ts: new Date(),
               room,
             })
@@ -155,8 +171,17 @@ const Message = memo(function Message({ m, currentUid, currentName }) {
   const isMe = m.uid ? m.uid === currentUid : m.name === currentName
   return (
     <li className="message-wrap" data-from={isMe ? 'me' : 'you'}>
+      {!isMe && (
+        <div className="msg-avatar">
+          {m.photoURL ? (
+            <img src={m.photoURL} alt="" />
+          ) : (
+            <span>{m.name ? m.name[0].toUpperCase() : '?'}</span>
+          )}
+        </div>
+      )}
       <div className="message">
-        <div className="msg-name">{m.name}</div>
+        {!isMe && <div className="msg-name">{m.name}</div>}
         <div className="msg-text">
           {m.text}
           {m.img && <img src={bucket + m.img + suffix} alt={m.name + "'s photo"} />}
