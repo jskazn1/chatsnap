@@ -3,10 +3,11 @@ import './App.css'
 import './media.css'
 import { db, storage } from './db'
 import { useDB } from './db'
-import NamePicker from './NamePicker'
+import { AuthProvider, useAuth } from './AuthContext'
+import Login from './Login'
 import { MdSend } from 'react-icons/md'
 import { BrowserRouter, Routes, Route, useParams, Navigate } from 'react-router-dom'
-import { FiCamera, FiSun, FiMoon } from 'react-icons/fi'
+import { FiCamera, FiSun, FiMoon, FiLogOut } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
 import { ref, uploadString } from 'firebase/storage'
 
@@ -24,18 +25,39 @@ function useTheme() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/:room" element={<Room />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/:room" element={<ProtectedRoom />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
+}
+
+function ProtectedRoom() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="loading-screen">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Login />
+  }
+
+  return <Room />
 }
 
 function Room() {
   const { room } = useParams()
-  const [name, setName] = useState('')
+  const { user, logout } = useAuth()
+  const name = user.displayName || user.email
   const { messages, loading } = useDB(room)
   const [showCamera, setShowCamera] = useState(false)
   const [sendError, setSendError] = useState(null)
@@ -58,6 +80,7 @@ function Room() {
       await db.send({
         img: imgID,
         name,
+        uid: user.uid,
         ts: new Date(),
         room,
       })
@@ -81,7 +104,15 @@ function Room() {
         >
           {theme === 'light' ? <FiMoon /> : <FiSun />}
         </button>
-        <NamePicker onSave={setName} />
+        <div className="user-info">
+          {user.photoURL && (
+            <img src={user.photoURL} alt="" className="user-avatar-small" />
+          )}
+          <span className="user-display-name">{name}</span>
+          <button className="theme-toggle" onClick={logout} aria-label="Sign out">
+            <FiLogOut />
+          </button>
+        </div>
       </header>
 
       <ul className="messages" ref={messagesRef}>
@@ -91,7 +122,7 @@ function Room() {
         )}
         {sendError && <li className="status-message error">{sendError}</li>}
         {messages.map((m) => (
-          <Message key={m.id} m={m} name={name} />
+          <Message key={m.id} m={m} currentUid={user.uid} currentName={name} />
         ))}
       </ul>
 
@@ -103,6 +134,7 @@ function Room() {
             await db.send({
               text,
               name,
+              uid: user.uid,
               ts: new Date(),
               room,
             })
@@ -119,9 +151,10 @@ const bucket =
   'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
 const suffix = '.jpg?alt=media'
 
-const Message = memo(function Message({ m, name }) {
+const Message = memo(function Message({ m, currentUid, currentName }) {
+  const isMe = m.uid ? m.uid === currentUid : m.name === currentName
   return (
-    <li className="message-wrap" data-from={m.name === name ? 'me' : 'you'}>
+    <li className="message-wrap" data-from={isMe ? 'me' : 'you'}>
       <div className="message">
         <div className="msg-name">{m.name}</div>
         <div className="msg-text">

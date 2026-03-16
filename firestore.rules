@@ -2,22 +2,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /messages/{messageId} {
-      // Anyone can read messages
-      allow read: if true;
+      // Authenticated users can read messages
+      allow read: if request.auth != null;
 
-      // Anyone can create a message with valid fields
-      allow create: if request.resource.data.keys().hasAll(['room', 'ts', 'name'])
+      // Authenticated users can create messages with valid fields
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['room', 'ts', 'name', 'uid'])
+        && request.resource.data.uid == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 50
         && request.resource.data.room is string
         && request.resource.data.room.size() > 0;
 
-      // No updates allowed
-      allow update: if false;
+      // Only the message author can update their own messages
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid;
 
-      // No deletes allowed from client
-      allow delete: if false;
+      // Only the message author can delete their own messages
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if request.auth != null;
+
+      // Users can only write their own profile
+      allow write: if request.auth != null
+        && request.auth.uid == userId;
     }
   }
 }
