@@ -23,12 +23,7 @@ function RoomDirectory({ onClose, onJoinRoom }) {
     setCreating(true)
     setError(null)
     try {
-      const room = await createRoom({
-        name: name.trim(),
-        description: description.trim(),
-        isPrivate,
-        createdBy: user.uid,
-      })
+      const room = await createRoom(name.trim(), description.trim(), isPrivate, user.uid)
       setName('')
       setDescription('')
       setIsPrivate(false)
