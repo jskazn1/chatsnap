@@ -47,7 +47,7 @@ function MainApp() {
   const [showProfile, setShowProfile] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
   const [showDirectory, setShowDirectory] = useState(false)
-  const [activeView, setActiveView] = useState({ type: 'home' })
+  const [activeView, setActiveView] = useState({ type: 'room', room: 'home' })
   const [dmOtherUser, setDmOtherUser] = useState(null)
   const [notifEnabled, setNotifEnabled] = useState(Notification?.permission === 'granted')
 
