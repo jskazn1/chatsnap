@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -31,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Handle redirect result for mobile Google sign-in
+    getRedirectResult(auth).catch(() => {})
+
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)
@@ -41,7 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loginWithGoogle() {
     setAuthError(null)
     try {
-      await signInWithPopup(auth, googleProvider)
+      const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
+      if (isMobile) {
+        await signInWithRedirect(auth, googleProvider)
+      } else {
+        await signInWithPopup(auth, googleProvider)
+      }
     } catch (e: any) {
       setAuthError(e.message)
     }
