@@ -1,188 +1,126 @@
-# ChatSnap Product Roadmap: Entering the Chat & Messaging Space
+# Surge — Product Roadmap
 
-## Context
-ChatSnap is a simple real-time chat app built in 2019 on React 16 + Firebase v7. It currently supports room-based text/photo messaging with no authentication. The goal is to evolve it into a competitive, modern messaging platform. The tech stack is severely outdated and the app lacks fundamental features users expect from chat apps (accounts, DMs, notifications, etc.).
-
----
-
-## Phase 1: Foundation — "Make It Real"
-**Theme:** Modernize the stack and add user accounts — the prerequisite for everything else.
-
-### 1.1 Upgrade Dependencies
-- Upgrade React 16 → React 18 (concurrent features, `useId`, improved Suspense)
-- Upgrade Firebase v7 → Firebase v10+ modular SDK (tree-shaking, smaller bundle)
-- Upgrade React Router v5 → v6 (data loaders, nested routes)
-- Replace Create React App with Vite (faster builds, better DX)
-- Replace `react-div-100vh` with CSS `dvh` units (native support now)
-- Update `react-icons` to latest
-
-**Files:** `package.json`, `src/db.js`, `src/App.js`, `src/index.js`, `vite.config.js` (new)
-
-### 1.2 Firebase Authentication
-- Add Firebase Auth (Google sign-in + email/password)
-- Create auth context/provider wrapping the app
-- Migrate from localStorage username to Firebase Auth user profiles
-- Update Firestore rules to require authenticated users
-- Store `uid`, `displayName`, `photoURL` on messages
-
-**Files:** `src/auth.js` (new), `src/App.js`, `src/db.js`, `firestore.rules`
-
-### 1.3 User Profiles
-- Profile page with display name + avatar (from Google or uploaded)
-- Store profiles in Firestore `users` collection
-- Show avatars next to messages
-- Online/offline presence indicator using Firebase Realtime Database
-
-**Files:** `src/Profile.js` (new), `src/db.js`, `src/App.css`
-
-### 1.4 Enable PWA
-- Register the service worker
-- Customize `manifest.json` with ChatSnap branding/icons
-- Add install prompt for mobile users
-
-**Files:** `src/index.js`, `public/manifest.json`
-
-### Deliverable
-A modern, authenticated chat app with user profiles and PWA install capability.
+**Live:** https://surge-bitfit.web.app  
+**Repo:** https://github.com/jskazn1/surge
 
 ---
 
-## Phase 2: Core Messaging — "Make It Useful"
-**Theme:** Build the features users expect from any messaging app.
+## ✅ Phase 1: Foundation — COMPLETE
 
-### 2.1 Direct Messages
-- Add DM conversations (stored in `conversations` collection)
-- User search/discovery to start new DMs
-- Conversation list sidebar/page
-- Unread message counts per conversation
-
-**Files:** `src/DMs.js` (new), `src/ConversationList.js` (new), `src/db.js`
-
-### 2.2 Enhanced Messages
-- Message editing and deletion (author-only, update Firestore rules)
-- Emoji reactions on messages (sub-collection or map field)
-- Reply/quote threading (reference parent message ID)
-- Link previews with Open Graph metadata
-- File attachments beyond photos (PDF, docs — via Cloud Storage)
-- Image gallery uploads from device (not just camera)
-
-**Files:** `src/App.js`, `src/db.js`, `firestore.rules`, `storage.rules`
-
-### 2.3 Real-Time Indicators
-- Typing indicators (using Firestore or Realtime Database ephemeral docs)
-- Read receipts (track `lastRead` timestamp per user per conversation)
-- Online/offline status badges
-
-**Files:** `src/TypingIndicator.js` (new), `src/db.js`
-
-### 2.4 Push Notifications
-- Firebase Cloud Messaging (FCM) integration
-- Notify on new messages when app is backgrounded
-- Notification preferences per conversation (mute/unmute)
-- Requires a small Cloud Function to trigger notifications
-
-**Files:** `src/notifications.js` (new), `functions/` (new directory for Cloud Functions)
-
-### Deliverable
-A fully functional messaging app with DMs, reactions, typing indicators, and push notifications.
+- [x] React 18 + Vite + Firebase v10 modular SDK
+- [x] Tailwind CSS v4 (utility-first, no config file)
+- [x] Firebase Authentication — Google OAuth popup + email/password
+- [x] User profiles — avatar upload, camera capture, display name
+- [x] PWA with service worker and web manifest
+- [x] Firebase Hosting deployed at surge-bitfit.web.app
+- [x] Renamed app from ChatSnap → Surge
 
 ---
 
-## Phase 3: Community & Safety — "Make It Sticky"
-**Theme:** Build features that create community and keep users safe.
+## ✅ Phase 2: Core Messaging — COMPLETE
 
-### 3.1 Rooms 2.0
-- Room creation UI with name, description, and avatar
-- Public room directory (browse/join rooms)
-- Private/invite-only rooms with join codes
-- Room admin roles (kick, ban, pin messages)
-- Pinned messages
-
-**Files:** `src/RoomSettings.js` (new), `src/RoomDirectory.js` (new), `firestore.rules`
-
-### 3.2 Moderation & Safety
-- Block/mute users
-- Report messages (stored in `reports` collection for review)
-- Profanity filter (client-side or Cloud Function)
-- Rate limiting on message sends (Firestore rules or Cloud Function)
-- Admin dashboard for reviewing reports
-
-**Files:** `src/moderation.js` (new), `functions/moderation.js` (new), `firestore.rules`
-
-### 3.3 Search & History
-- Full-text message search (Algolia or Firebase Extensions)
-- Infinite scroll for message history (paginated queries beyond 100)
-- Bookmarked/saved messages
-
-**Files:** `src/Search.js` (new), `src/db.js`
-
-### 3.4 Media & Rich Content
-- GIF picker (Giphy/Tenor API integration)
-- Voice messages (MediaRecorder API + Cloud Storage)
-- Message formatting (bold, italic, code blocks — markdown subset)
-
-**Files:** `src/GifPicker.js` (new), `src/VoiceMessage.js` (new), `src/MessageRenderer.js` (new)
-
-### Deliverable
-A community-ready platform with moderation tools, search, and rich media.
+- [x] Room-based chat with real-time Firestore sync
+- [x] Direct messages (1:1 conversations)
+- [x] User search to start new DMs
+- [x] Message editing and deletion (author-only)
+- [x] Emoji reactions on messages
+- [x] Reply/quote threading
+- [x] Typing indicators
+- [x] Push notifications (FCM + Cloud Functions)
 
 ---
 
-## Phase 4: Scale & Polish — "Make It Competitive"
-**Theme:** Performance, polish, and platform expansion.
+## ✅ Phase 3: Community & Safety — COMPLETE
 
-### 4.1 Performance & Reliability
-- Code splitting and lazy loading for routes
-- Image optimization (thumbnails via Cloud Function, lazy loading)
-- Offline support with Firestore persistence
-- Error monitoring (Sentry or Firebase Crashlytics)
-- Analytics (Firebase Analytics or PostHog)
+- [x] Room directory — browse, create, join public rooms
+- [x] Private rooms with invite codes
+- [x] Block/mute users
+- [x] Report messages
+- [x] Message search (client-side full-text)
+- [x] GIF picker (Tenor API)
+- [x] Voice messages (MediaRecorder + Firebase Storage)
+- [x] Markdown rendering (bold, italic, code blocks, strikethrough, auto-links)
+- [x] Message pinning
+
+---
+
+## 🚧 Phase 4: Scale & Polish — IN PROGRESS
+
+**Theme:** Make Surge fast, polished, and ready for real users.
+
+### 4.1 Performance
+- [ ] Code splitting + lazy loading for routes (reduce initial bundle from ~825kb)
+- [ ] Image thumbnails via Cloud Function (resize on upload, serve smaller previews)
+- [ ] Lazy load images in chat (IntersectionObserver)
+- [ ] Firestore offline persistence (`enableIndexedDbPersistence`)
+- [ ] Paginated message history (infinite scroll beyond the 100-message limit)
 
 ### 4.2 UX Polish
-- Message animations and transitions
-- Swipe gestures for reply/delete on mobile
-- Drag-and-drop file sharing
-- Keyboard shortcuts for power users
-- Accessibility audit (WCAG 2.1 AA)
+- [ ] Message send/receive animations (subtle slide-in)
+- [ ] Swipe left to reply on mobile
+- [ ] Drag-and-drop file/image sharing into chat
+- [ ] Keyboard shortcuts (e.g. `/` to search, `Esc` to close panels)
+- [ ] Unread message counts + badge on rooms/DMs in sidebar
+- [ ] Read receipts (show who's seen a message)
+- [ ] Link previews with Open Graph metadata
+- [ ] Accessibility audit (WCAG 2.1 AA)
 
-### 4.3 Platform Expansion
-- React Native mobile app (sharing Firebase backend + Firestore logic)
-- Desktop app via Electron or Tauri
-- Or: keep it web-only PWA and optimize the mobile web experience
+### 4.3 Analytics & Monitoring
+- [ ] Error monitoring — Sentry or Firebase Crashlytics
+- [ ] Usage analytics — Firebase Analytics or PostHog
+- [ ] Performance monitoring — Firebase Performance SDK
 
-### 4.4 Monetization (Optional)
-- Custom room themes/branding (premium)
-- Increased file upload limits (premium)
-- API access for integrations/bots
-
-### Deliverable
-A polished, performant, cross-platform messaging app ready for public launch.
+### 4.4 Moderation Upgrades
+- [ ] Profanity filter (Cloud Function or client-side wordlist)
+- [ ] Rate limiting on message sends (Firestore security rules)
+- [ ] Admin dashboard for reviewing reports
 
 ---
 
-## Implementation Priority Summary
+## 🔮 Phase 5: Platform Expansion
 
-| Priority | Item | Dependency |
-|----------|------|------------|
-| 1 | Upgrade dependencies (React 18, Firebase v10, Vite) | None |
-| 2 | Firebase Authentication | Dependency upgrades |
-| 3 | User profiles + avatars | Auth |
-| 4 | Enable PWA | Dependency upgrades |
-| 5 | Direct messages | Auth + profiles |
-| 6 | Message editing/deletion + reactions | Auth |
-| 7 | Typing indicators + read receipts | Auth |
-| 8 | Push notifications | Auth + Cloud Functions |
-| 9 | Room improvements | Auth |
-| 10 | Moderation tools | Auth + rooms |
-| 11 | Search | None (but better after scale) |
-| 12 | Rich media (GIFs, voice, formatting) | None |
-| 13 | Performance optimization | After feature complete |
-| 14 | Mobile/desktop apps | After web is stable |
+**Theme:** Take Surge beyond the browser.
 
-## Verification
-After each phase:
-- Run `npm run build` to verify no build errors
-- Test all new features manually in browser
-- Deploy to Firebase Hosting and verify in production
-- Check Firestore rules with the Firebase Emulator Suite
-- Monitor Firebase console for errors/usage
+### 5.1 Mobile
+- [ ] PWA optimization for iOS/Android (install prompt, splash screens, haptics)
+- [ ] Or: React Native app sharing the Firebase backend
+
+### 5.2 Power Features
+- [ ] Threads / sub-conversations in rooms
+- [ ] Message scheduling ("send later")
+- [ ] File attachments beyond photos (PDF, docs via Cloud Storage)
+- [ ] Room bots / webhooks API
+
+### 5.3 Monetization (Optional)
+- [ ] Custom room themes (premium)
+- [ ] Increased file upload limits (premium)
+- [ ] API access for integrations/bots
+
+---
+
+## Current Priority Order
+
+| # | Item | Impact | Effort |
+|---|------|--------|--------|
+| 1 | Code splitting (lazy routes) | 🔥 High | Low |
+| 2 | Unread counts in sidebar | 🔥 High | Medium |
+| 3 | Message animations | Medium | Low |
+| 4 | Offline persistence | Medium | Low |
+| 5 | Error monitoring (Sentry) | 🔥 High | Low |
+| 6 | Image thumbnails | Medium | High |
+| 7 | Swipe to reply (mobile) | Medium | Medium |
+| 8 | Link previews | Medium | High |
+| 9 | Drag-and-drop uploads | Medium | Medium |
+| 10 | Accessibility audit | Medium | High |
+
+---
+
+## Deployment Checklist (after each change)
+
+```bash
+git pull
+npm run build        # must succeed with 0 errors
+firebase deploy --only hosting
+```
+
+Then verify live at https://surge-bitfit.web.app
