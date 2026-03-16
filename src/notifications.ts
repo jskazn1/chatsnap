@@ -1,8 +1,8 @@
-import { getMessaging, getToken, onMessage } from 'firebase/messaging'
+import { getMessaging, getToken, onMessage, MessagePayload } from 'firebase/messaging'
 import { doc, updateDoc } from 'firebase/firestore'
 import { store } from './db'
 
-let messaging = null
+let messaging: ReturnType<typeof getMessaging> | null = null
 
 try {
   messaging = getMessaging()
@@ -10,19 +10,15 @@ try {
   // FCM not supported (e.g., Safari without push API)
 }
 
-export async function requestNotificationPermission(uid) {
+export async function requestNotificationPermission(uid: string): Promise<boolean> {
   if (!messaging) return false
-
   try {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return false
-
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || '',
     })
-
     if (token) {
-      // Save token to user's profile
       await updateDoc(doc(store, 'users', uid), { fcmToken: token })
       return true
     }
@@ -32,9 +28,7 @@ export async function requestNotificationPermission(uid) {
   return false
 }
 
-export function onForegroundMessage(callback) {
+export function onForegroundMessage(callback: (payload: MessagePayload) => void): () => void {
   if (!messaging) return () => {}
-  return onMessage(messaging, (payload) => {
-    callback(payload)
-  })
+  return onMessage(messaging, callback)
 }
