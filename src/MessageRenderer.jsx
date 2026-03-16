@@ -39,7 +39,7 @@ function MessageRenderer({ text }) {
 
 function InlineFormat({ text }) {
   // Process bold, italic, strikethrough
-  const regex = /(**[^*]+**|*[^*]+*|~~[^~]+~~)/g
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~)/g
   const parts = text.split(regex)
 
   return (
