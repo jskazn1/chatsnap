@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, memo, useCallback } from 'react'
 import { db, storage, sendDM, setTyping, useTyping, useBlockedUsers, blockUser, unblockUser, reportMessage, searchMessages, pinMessage, unpinMessage, useRoomInfo, addReaction, editMessage, deleteMessage } from './db'
 import { useAuth } from './AuthContext'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { ref, uploadString } from 'firebase/storage'
+import { ref, uploadString, getDownloadURL } from 'firebase/storage'
 import { MdSend, MdEdit, MdDelete, MdReply, MdClose, MdCheck, MdPushPin, MdFlag, MdBlock, MdGif } from 'react-icons/md'
 import { FiCamera, FiSmile, FiSearch, FiX, FiMic, FiHash } from 'react-icons/fi'
 import Camera from 'react-snap-pic'
@@ -10,8 +10,6 @@ import MessageRenderer from './MessageRenderer'
 import GifPicker from './GifPicker'
 import { VoiceRecorder, VoicePlayer } from './VoiceMessage'
 
-const bucket = 'https://firebasestorage.googleapis.com/v0/b/jordansk-chatter202020.appspot.com/o/'
-const suffix = '.jpg?alt=media'
 const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😢', '🔥']
 
 function ChatView({ messages, loading, mode, roomName, conversationId, otherUser }) {
@@ -81,8 +79,9 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
 
   async function handlePhoto(dataUrl) {
     const filename = `photos/${user.uid}_${Date.now()}`
-    await uploadString(ref(storage, filename), dataUrl, 'data_url')
-    const imageUrl = bucket + encodeURIComponent(filename) + suffix
+    const storageRef = ref(storage, filename)
+    await uploadString(storageRef, dataUrl, 'data_url')
+    const imageUrl = await getDownloadURL(storageRef)
     const msg = { text: '', imageUrl, uid: user.uid, displayName: user.displayName || user.email, photoURL: user.photoURL || null, createdAt: null }
     if (mode === 'dm') await sendDM(conversationId, msg)
     else await addDoc(collection(db, 'rooms', roomName, 'messages'), { ...msg, createdAt: serverTimestamp() })
@@ -235,7 +234,7 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
 
         <div className="flex gap-1 shrink-0">
           <VoiceRecorder
-            onRecord={async (voiceUrl) => {
+            onSend={async (voiceUrl) => {
               const msg = { text: '', voiceUrl, uid: user.uid, displayName: user.displayName || user.email, photoURL: user.photoURL || null, createdAt: null }
               if (mode === 'dm') await sendDM(conversationId, msg)
               else await addDoc(collection(db, 'rooms', roomName, 'messages'), { ...msg, createdAt: serverTimestamp() })
