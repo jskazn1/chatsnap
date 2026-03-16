@@ -28,7 +28,7 @@ function RoomDirectory({ onClose, onJoinRoom }) {
       setDescription('')
       setIsPrivate(false)
       setShowCreate(false)
-      onJoinRoom?.(room.id, room.name)
+      onJoinRoom?.(room.slug, room.name)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -44,7 +44,7 @@ function RoomDirectory({ onClose, onJoinRoom }) {
     }
     try {
       await joinRoom(room.id, user.uid)
-      onJoinRoom?.(room.id, room.name)
+      onJoinRoom?.(room.slug, room.name)
     } catch (err) {
       setError(err.message)
     }
@@ -57,7 +57,7 @@ function RoomDirectory({ onClose, onJoinRoom }) {
       await joinRoom(room.id, user.uid, joinInput.trim())
       setJoiningId(null)
       setJoinInput('')
-      onJoinRoom?.(room.id, room.name)
+      onJoinRoom?.(room.slug, room.name)
     } catch (err) {
       setError(err.message)
     } finally {
