@@ -189,11 +189,11 @@ function MainApp() {
       {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* MD3 Top App Bar */}
-        <header className="flex items-center gap-2 px-3 py-2 bg-slate-900/95 border-b border-slate-800 shrink-0 backdrop-blur-sm">
+        <header className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-slate-900/95 border-b border-slate-800 shrink-0 backdrop-blur-sm">
           {/* Navigation icon — mobile only */}
           <button
             onClick={() => setShowSidebar(s => !s)}
-            className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label="Toggle sidebar"
           >
             <FiMenu size={20} />
@@ -206,10 +206,10 @@ function MainApp() {
 
           <div className="flex-1" />
 
-          {/* Action icons — MD3 icon button style */}
+          {/* Action icons — hide less important ones on small screens */}
           <button
             onClick={toggleNotifications}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="hidden sm:flex w-10 h-10 rounded-full items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label={notifEnabled ? 'Notifications on' : 'Enable notifications'}
             title={notifEnabled ? 'Notifications on' : 'Enable notifications'}
           >
@@ -218,28 +218,28 @@ function MainApp() {
 
           <button
             onClick={toggleTheme}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="hidden sm:flex w-10 h-10 rounded-full items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           >
             {theme === 'light' ? <FiMoon size={18} /> : <FiSun size={18} />}
           </button>
 
-          {/* Avatar chip — MD3 "avatar button" pattern */}
+          {/* Avatar chip */}
           <button
             onClick={() => setShowProfile(true)}
-            className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 pl-1 pr-1 sm:pr-3 py-1 rounded-full hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label="Edit profile"
           >
             {user.photoURL
-              ? <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-violet-500/40" />
-              : <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-violet-500/40"><FiUser size={14} /></div>
+              ? <img src={user.photoURL} alt="" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-2 ring-violet-500/40" />
+              : <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-violet-500/40"><FiUser size={14} /></div>
             }
             <span className="text-sm text-slate-300 hidden sm:block max-w-[120px] truncate font-medium">{name}</span>
           </button>
 
           <button
             onClick={() => navigate('/settings')}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label="Settings"
           >
             <FiSettings size={17} />
@@ -247,7 +247,7 @@ function MainApp() {
 
           <button
             onClick={logout}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-slate-800 active:bg-slate-700 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-slate-800 active:bg-slate-700 transition-colors"
             aria-label="Sign out"
           >
             <FiLogOut size={17} />
@@ -265,14 +265,18 @@ function MainApp() {
         />
       </div>
 
-      {/* Room directory modal */}
+      {/* Room directory modal — full-screen overlay on mobile, panel on desktop */}
       {showDirectory && (
-        <Suspense fallback={<PageSpinner />}>
-          <RoomDirectory
-            onClose={() => setShowDirectory(false)}
-            onJoinRoom={slug => { handleSelectRoom(slug); setShowDirectory(false) }}
-          />
-        </Suspense>
+        <div className="fixed inset-0 z-40 flex items-stretch sm:items-center sm:justify-center bg-black/60">
+          <div className="w-full h-full sm:w-[560px] sm:h-[80vh] sm:max-h-[700px] sm:rounded-2xl overflow-hidden">
+            <Suspense fallback={<PageSpinner />}>
+              <RoomDirectory
+                onClose={() => setShowDirectory(false)}
+                onJoinRoom={slug => { handleSelectRoom(slug); setShowDirectory(false) }}
+              />
+            </Suspense>
+          </div>
+        </div>
       )}
 
       {/* PWA install prompt */}

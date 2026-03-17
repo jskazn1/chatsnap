@@ -39,7 +39,7 @@ function GifPicker({ onSelect, onClose }) {
   }
 
   return (
-    <div className="flex flex-col w-80 h-96 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
+    <div className="flex flex-col w-full sm:w-80 h-72 sm:h-96 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700">
         <div className="flex items-center gap-2 flex-1 bg-slate-700 rounded-lg px-3 py-1.5">

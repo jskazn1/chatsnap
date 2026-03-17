@@ -24,7 +24,9 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showEmojiFor, setShowEmojiFor] = useState(null)
+  const [showActionsFor, setShowActionsFor] = useState(null)
   const [isRecording, setIsRecording] = useState(false)
+  const [showMobileAttach, setShowMobileAttach] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
@@ -122,12 +124,12 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-900">
       {/* Channel header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/50 shrink-0">
-        <div>
-          <h2 className="font-semibold text-white text-sm">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-800/50 border-b border-slate-700/50 shrink-0">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-white text-sm truncate">
             {mode === 'dm' ? (otherUser?.displayName || 'Direct Message') : `#${roomName}`}
           </h2>
-          {roomInfo?.description && <p className="text-slate-500 text-xs mt-0.5 truncate max-w-xs">{roomInfo.description}</p>}
+          {roomInfo?.description && <p className="text-slate-500 text-xs mt-0.5 truncate max-w-[200px] sm:max-w-xs">{roomInfo.description}</p>}
         </div>
         <button onClick={() => setShowSearch(s => !s)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
           {showSearch ? <FiX size={16} /> : <FiSearch size={16} />}
@@ -150,7 +152,7 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-1">
+      <div className="flex-1 overflow-y-auto scrollbar-thin px-2 sm:px-4 py-3 sm:py-4 space-y-1">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -178,6 +180,8 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
             onUnblock={(uid) => unblockUser(user.uid, uid)}
             blockedUsers={blockedUsers}
             onToggleEmoji={(id) => setShowEmojiFor(e => e === id ? null : id)}
+            showActionsFor={showActionsFor}
+            onToggleActions={(id) => setShowActionsFor(a => a === id ? null : id)}
           />
         ))}
         <div ref={bottomRef} />
@@ -212,14 +216,31 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
       )}
 
       {/* Input bar */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 px-4 py-3 bg-slate-800/50 border-t border-slate-700/50 shrink-0">
-        <div className="flex gap-1 shrink-0">
+      <form onSubmit={handleSend} className="flex items-end gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 bg-slate-800/50 border-t border-slate-700/50 shrink-0">
+        <div className="hidden sm:flex gap-1 shrink-0">
           <button type="button" onClick={() => setShowCamera(s => !s)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
             <FiCamera size={18} />
           </button>
           <button type="button" onClick={() => setShowGif(s => !s)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
             <MdGif size={20} />
           </button>
+        </div>
+
+        {/* Mobile: attach button with popover for camera/gif */}
+        <div className="sm:hidden relative shrink-0">
+          <button type="button" onClick={() => setShowMobileAttach(s => !s)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+            <FiCamera size={18} />
+          </button>
+          {showMobileAttach && (
+            <div className="absolute bottom-full left-0 mb-1 flex flex-col bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-10">
+              <button type="button" onClick={() => { setShowCamera(s => !s); setShowMobileAttach(false) }} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors whitespace-nowrap">
+                <FiCamera size={14} /> Photo
+              </button>
+              <button type="button" onClick={() => { setShowGif(s => !s); setShowMobileAttach(false) }} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors whitespace-nowrap">
+                <MdGif size={16} /> GIF
+              </button>
+            </div>
+          )}
         </div>
 
         <input
@@ -229,21 +250,23 @@ function ChatView({ messages, loading, mode, roomName, conversationId, otherUser
           onChange={e => { setText(e.target.value); handleTyping() }}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend(e)}
           placeholder={`Message ${mode === 'dm' ? (otherUser?.displayName || '') : '#' + roomName}...`}
-          className="flex-1 bg-slate-700/50 text-white placeholder-slate-500 border border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+          className="flex-1 min-w-0 bg-slate-700/50 text-white placeholder-slate-500 border border-slate-600 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:outline-none focus:border-indigo-500 resize-none"
         />
 
         <div className="flex gap-1 shrink-0">
-          <VoiceRecorder
-            onSend={async (voiceUrl) => {
-              const msg = { text: '', voiceUrl, uid: user.uid, displayName: user.displayName || user.email, photoURL: user.photoURL || null, createdAt: null }
-              if (mode === 'dm') await sendDM(conversationId, msg)
-              else await addDoc(collection(db, 'rooms', roomName, 'messages'), { ...msg, createdAt: serverTimestamp() })
-            }}
-          />
+          <div className="hidden sm:block">
+            <VoiceRecorder
+              onSend={async (voiceUrl) => {
+                const msg = { text: '', voiceUrl, uid: user.uid, displayName: user.displayName || user.email, photoURL: user.photoURL || null, createdAt: null }
+                if (mode === 'dm') await sendDM(conversationId, msg)
+                else await addDoc(collection(db, 'rooms', roomName, 'messages'), { ...msg, createdAt: serverTimestamp() })
+              }}
+            />
+          </div>
           <button
             type="submit"
             disabled={!text.trim()}
-            className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white transition-colors"
+            className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white transition-colors"
           >
             <MdSend size={18} />
           </button>
@@ -257,25 +280,29 @@ const MessageItem = memo(function MessageItem({
   msg, currentUid, collPath, editingId, editText, showEmojiFor,
   onEdit, onEditSave, onEditCancel, onEditTextChange,
   onDelete, onReply, onReact, onPin, onUnpin, onReport, onBlock, onUnblock,
-  blockedUsers, onToggleEmoji
+  blockedUsers, onToggleEmoji, showActionsFor, onToggleActions
 }) {
   const isOwn = msg.uid === currentUid
   const isEditing = editingId === msg.id
+  const showActions = showActionsFor === msg.id
 
   return (
-    <div className="group flex items-start gap-2.5 px-2 py-1 rounded-xl hover:bg-slate-800/40 transition-colors">
+    <div
+      className="group relative flex items-start gap-2 sm:gap-2.5 px-1.5 sm:px-2 py-1 rounded-xl hover:bg-slate-800/40 active:bg-slate-800/40 transition-colors"
+      onClick={() => onToggleActions?.(msg.id)}
+    >
       {/* Avatar */}
       {msg.photoURL
-        ? <img src={msg.photoURL} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" />
-        : <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-medium shrink-0 mt-0.5">
+        ? <img src={msg.photoURL} alt="" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 mt-0.5" />
+        : <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-medium shrink-0 mt-0.5">
             {msg.displayName?.[0]?.toUpperCase() || '?'}
           </div>
       }
 
       <div className="flex-1 min-w-0">
         {/* Name + time */}
-        <div className="flex items-baseline gap-2 mb-0.5">
-          <span className="text-sm font-semibold text-white">{msg.displayName}</span>
+        <div className="flex items-baseline gap-1.5 sm:gap-2 mb-0.5 flex-wrap">
+          <span className="text-sm font-semibold text-white truncate max-w-[120px] sm:max-w-none">{msg.displayName}</span>
           <span className="text-xs text-slate-500">
             {msg.createdAt?.toDate?.()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
@@ -298,7 +325,7 @@ const MessageItem = memo(function MessageItem({
               value={editText}
               onChange={e => onEditTextChange(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onEditSave(msg.id, editText); if (e.key === 'Escape') onEditCancel() }}
-              className="flex-1 bg-slate-700 text-white border border-indigo-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+              className="flex-1 min-w-0 bg-slate-700 text-white border border-indigo-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
               autoFocus
             />
             <button onClick={() => onEditSave(msg.id, editText)} className="text-green-400 hover:text-green-300 p-1"><MdCheck size={16} /></button>
@@ -306,8 +333,8 @@ const MessageItem = memo(function MessageItem({
           </div>
         ) : (
           <div className="text-sm text-slate-200 leading-relaxed break-words">
-            {msg.imageUrl && <img src={msg.imageUrl} alt="photo" className="max-w-xs rounded-xl mb-1 cursor-pointer" />}
-            {msg.gifUrl && <img src={msg.gifUrl} alt="gif" className="max-w-xs rounded-xl mb-1" />}
+            {msg.imageUrl && <img src={msg.imageUrl} alt="photo" className="max-w-[200px] sm:max-w-xs rounded-xl mb-1 cursor-pointer" />}
+            {msg.gifUrl && <img src={msg.gifUrl} alt="gif" className="max-w-[200px] sm:max-w-xs rounded-xl mb-1" />}
             {msg.voiceUrl && <VoicePlayer url={msg.voiceUrl} />}
             {msg.text && <MessageRenderer text={msg.text} />}
           </div>
@@ -319,7 +346,7 @@ const MessageItem = memo(function MessageItem({
             {Object.entries(msg.reactions).filter(([, users]) => users.length > 0).map(([emoji, users]) => (
               <button
                 key={emoji}
-                onClick={() => onReact(msg.id, emoji)}
+                onClick={(e) => { e.stopPropagation(); onReact(msg.id, emoji) }}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
                   users.includes(currentUid)
                     ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300'
@@ -331,31 +358,46 @@ const MessageItem = memo(function MessageItem({
             ))}
           </div>
         )}
+
+        {/* Mobile action bar — shown on tap */}
+        {showActions && (
+          <div className="flex items-center gap-1 mt-1 sm:hidden" onClick={e => e.stopPropagation()}>
+            <button onClick={() => onToggleEmoji(msg.id)} className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><FiSmile size={16} /></button>
+            <button onClick={() => { onReply(msg); onToggleActions(null) }} className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><MdReply size={16} /></button>
+            {isOwn && (
+              <>
+                <button onClick={() => onEdit(msg.id, msg.text)} className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><MdEdit size={16} /></button>
+                <button onClick={() => onDelete(msg.id)} className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-slate-700 transition-colors"><MdDelete size={16} /></button>
+              </>
+            )}
+            <button onClick={() => msg.pinned ? onUnpin(msg.id) : onPin(msg.id)} className="p-1.5 rounded text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition-colors"><MdPushPin size={16} /></button>
+          </div>
+        )}
       </div>
 
-      {/* Actions (visible on hover) */}
-      <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-        <button onClick={() => onToggleEmoji(msg.id)} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="React">
+      {/* Desktop actions (visible on hover) */}
+      <div className="hidden sm:group-hover:flex items-center gap-0.5 shrink-0">
+        <button onClick={(e) => { e.stopPropagation(); onToggleEmoji(msg.id) }} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="React">
           <FiSmile size={14} />
         </button>
-        <button onClick={() => onReply(msg)} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="Reply">
+        <button onClick={(e) => { e.stopPropagation(); onReply(msg) }} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="Reply">
           <MdReply size={14} />
         </button>
         {isOwn && (
           <>
-            <button onClick={() => onEdit(msg.id, msg.text)} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="Edit">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(msg.id, msg.text) }} className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors" title="Edit">
               <MdEdit size={14} />
             </button>
-            <button onClick={() => onDelete(msg.id)} className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors" title="Delete">
+            <button onClick={(e) => { e.stopPropagation(); onDelete(msg.id) }} className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors" title="Delete">
               <MdDelete size={14} />
             </button>
           </>
         )}
-        <button onClick={() => msg.pinned ? onUnpin(msg.id) : onPin(msg.id)} className="p-1 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition-colors" title="Pin">
+        <button onClick={(e) => { e.stopPropagation(); msg.pinned ? onUnpin(msg.id) : onPin(msg.id) }} className="p-1 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition-colors" title="Pin">
           <MdPushPin size={14} />
         </button>
         {!isOwn && (
-          <button onClick={() => onReport(msg.id)} className="p-1 rounded text-slate-500 hover:text-orange-400 hover:bg-slate-700 transition-colors" title="Report">
+          <button onClick={(e) => { e.stopPropagation(); onReport(msg.id) }} className="p-1 rounded text-slate-500 hover:text-orange-400 hover:bg-slate-700 transition-colors" title="Report">
             <MdFlag size={14} />
           </button>
         )}
@@ -363,10 +405,10 @@ const MessageItem = memo(function MessageItem({
 
       {/* Emoji picker */}
       {showEmojiFor === msg.id && (
-        <div className="absolute right-0 mt-8 flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-xl z-10">
+        <div className="absolute right-0 sm:right-0 left-auto mt-8 flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-2 shadow-xl z-10 max-[400px]:left-0 max-[400px]:right-auto" onClick={e => e.stopPropagation()}>
           {EMOJI_LIST.map(e => (
             <button key={e} onClick={() => { onReact(msg.id, e); onToggleEmoji(null) }}
-              className="text-xl hover:scale-125 transition-transform p-1">
+              className="text-lg sm:text-xl hover:scale-125 transition-transform p-0.5 sm:p-1">
               {e}
             </button>
           ))}
