@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { initializeApp } from 'firebase/app'
 import {
-  getFirestore, collection, addDoc, deleteDoc, updateDoc,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, addDoc, deleteDoc, updateDoc,
   doc, setDoc, getDoc, getDocs, query, where, orderBy,
   limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
   Timestamp,
@@ -20,7 +21,9 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
 export const store = db
 export const storage = getStorage(app)
 export const auth = getAuth(app)
