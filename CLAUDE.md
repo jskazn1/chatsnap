@@ -92,7 +92,7 @@ surge/
 ### Remaining (Phase 4 — Scale & Polish)
 - [ ] Code splitting and lazy loading
 - [ ] Image optimization (thumbnails)
-- [ ] Offline support with Firestore persistence
+- [x] Offline support with Firestore persistence
 - [ ] Error monitoring
 - [ ] Message animations and transitions
 - [ ] Accessibility audit (WCAG 2.1 AA)
