@@ -10,10 +10,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Surge — Real-time Messaging',
-        short_name: 'Surge',
-        description: 'Real-time chat and photo messaging app',
-        theme_color: '#6366f1',
+        name: 'Orbit — Every bit, in orbit.',
+        short_name: 'Orbit',
+        description: 'Real-time messaging reimagined.',
+        theme_color: '#7c3aed',
         background_color: '#0f172a',
         display: 'standalone',
         start_url: '/',
@@ -25,6 +25,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        navigateFallbackDenylist: [/^\/__\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,

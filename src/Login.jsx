@@ -49,9 +49,9 @@ function Login() {
             <FiZap size={28} className="text-white" />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Surge
+            Orbit
           </h1>
-          <p className="text-slate-400 mt-1">Real-time messaging, redefined</p>
+          <p className="text-slate-400 mt-1">Every bit, in orbit.</p>
         </div>
 
         {/* Card */}
@@ -87,7 +87,7 @@ function Login() {
               </button>
 
               <p className="text-center text-slate-400 text-sm pt-2">
-                New to Surge?{' '}
+                New to Orbit?{' '}
                 <button onClick={() => setMode('signup')} className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
                   Create an account
                 </button>
@@ -112,7 +112,7 @@ function Login() {
 
           {mode === 'signup' && (
             <form onSubmit={handleSignup} className="space-y-4">
-              <h2 className="text-xl font-semibold text-white mb-2">Join Surge</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">Join Orbit</h2>
               <input type="text" placeholder="Display name" value={name} onChange={e => setName(e.target.value)} required className={inputClass} />
               <input type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
               <input type="password" placeholder="Password (6+ characters)" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className={inputClass} />
