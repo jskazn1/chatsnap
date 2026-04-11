@@ -25,7 +25,7 @@ function MessageRenderer({ text }) {
           return (
             <code
               key={i}
-              className="px-1.5 py-0.5 bg-slate-700 text-indigo-300 text-xs font-mono rounded"
+              className="px-1.5 py-0.5 bg-slate-700 text-cyan-300 text-xs font-mono rounded"
             >
               {part.slice(1, -1)}
             </code>
@@ -75,7 +75,7 @@ function AutoLink({ text }) {
               href={part}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 break-all transition-colors"
+              className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 break-all transition-colors"
             >
               {part}
             </a>

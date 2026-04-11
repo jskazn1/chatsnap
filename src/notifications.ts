@@ -12,12 +12,20 @@ try {
 
 export async function requestNotificationPermission(uid: string): Promise<boolean> {
   if (!messaging) return false
+
+  const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
+  if (!vapidKey) {
+    console.warn(
+      '[notifications] VITE_FIREBASE_VAPID_KEY is not set. ' +
+      'Push notifications will not work. Set it in your .env file (see .env.example).'
+    )
+    return false
+  }
+
   try {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return false
-    const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || '',
-    })
+    const token = await getToken(messaging, { vapidKey })
     if (token) {
       await updateDoc(doc(store, 'users', uid), { fcmToken: token })
       return true

@@ -124,7 +124,7 @@ function Profile({ onClose }) {
           {/* Avatar section */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center ring-4 ring-slate-700">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-4 ring-slate-700">
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
@@ -139,7 +139,7 @@ function Profile({ onClose }) {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-colors shadow-lg"
+                  className="w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center transition-colors shadow-lg"
                   title="Upload photo"
                 >
                   <FiUpload size={14} />
@@ -175,7 +175,7 @@ function Profile({ onClose }) {
               onChange={e => setDisplayName(e.target.value)}
               placeholder="Enter your display name"
               maxLength={50}
-              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
             />
             <p className="text-slate-500 text-xs text-right">{displayName.length}/50</p>
           </div>
@@ -209,7 +209,7 @@ function Profile({ onClose }) {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-indigo-500/20"
+            className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-violet-500/20"
           >
             {saving ? (
               <span className="flex items-center justify-center gap-2">

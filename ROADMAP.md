@@ -1,6 +1,6 @@
 # Surge — Product Roadmap
 
-**Live:** https://surge-bitfit.web.app  
+**Live:** https://orbit-msg.web.app  
 **Repo:** https://github.com/jskazn1/surge
 
 ---
@@ -12,7 +12,7 @@
 - [x] Firebase Authentication — Google OAuth popup + email/password
 - [x] User profiles — avatar upload, camera capture, display name
 - [x] PWA with service worker and web manifest
-- [x] Firebase Hosting deployed at surge-bitfit.web.app
+- [x] Firebase Hosting deployed at orbit-msg.web.app
 - [x] Renamed app from ChatSnap → Surge
 
 ---
@@ -123,4 +123,4 @@ npm run build        # must succeed with 0 errors
 firebase deploy --only hosting
 ```
 
-Then verify live at https://surge-bitfit.web.app
+Then verify live at https://orbit-msg.web.app

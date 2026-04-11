@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Orbit Chat — Design Mockup</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+  html, body { width:100%; height:100%; background:#09090f; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; overflow:hidden; }
+  #root { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-thumb { background:#2d3f55; border-radius:9999px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  textarea, button, input { font-family:inherit; }
+  textarea::placeholder { color:#3d5068; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.35} 40%{transform:translateY(-5px);opacity:1} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect, useCallback } = React;
+
+/* ─── Tokens ──────────────────────────────────────────────────────────────── */
+const tk = {
+  bg: {
+    page:     "#09090f",
+    base:     "#0b0f1a",
+    surface:  "#0f1624",
+    elevated: "#161f30",
+    hover:    "#1c2840",
+    input:    "#161f30",
+  },
+  accent: {
+    cyan:     "#22d3ee",
+    cyanSoft: "rgba(34,211,238,0.12)",
+    cyanMid:  "rgba(34,211,238,0.22)",
+    blue:     "#60a5fa",
+    green:    "#34d399",
+    indigo:   "#818cf8",
+    pink:     "#f472b6",
+    amber:    "#fbbf24",
+  },
+  text: {
+    primary:  "#eef2f8",
+    secondary:"#8fa3bf",
+    muted:    "#3d5068",
+    dim:      "#2a3a50",
+  },
+  border: {
+    faint:  "rgba(148,163,184,0.055)",
+    subtle: "rgba(148,163,184,0.10)",
+    soft:   "rgba(148,163,184,0.16)",
+    focus:  "rgba(34,211,238,0.5)",
+  },
+  r: { xs:"4px", sm:"8px", md:"12px", lg:"16px", xl:"20px", "2xl":"24px", full:"9999px" },
+  shadow: {
+    sm:  "0 1px 3px rgba(0,0,0,0.4)",
+    md:  "0 4px 16px rgba(0,0,0,0.5)",
+    lg:  "0 8px 32px rgba(0,0,0,0.6)",
+    glow:"0 0 20px rgba(34,211,238,0.18)",
+  },
+};
+
+/* ─── SVG icon library (Lucide-style, 16×16 viewBox) ─────────────────────── */
+const PATHS = {
+  hash:        "M3 6h10M3 10h10M6.5 2l-1 12M10.5 2l-1 12",
+  lock:        "M5 7V5a3 3 0 0 1 6 0v2M3.5 7h9l.7 7H2.8L3.5 7z M8 11v1.5",
+  search:      "M7.5 13A5.5 5.5 0 1 0 7.5 2a5.5 5.5 0 0 0 0 11zM11.5 11.5 14.5 14.5",
+  pencil:      "M11.5 2.5a1.5 1.5 0 0 1 2.1 2.1L4.5 13.6H2.5v-2L11.5 2.5zM10 4l2 2",
+  bell:        "M8 2a4.5 4.5 0 0 0-4.5 4.5V9L2 11h12l-1.5-2V6.5A4.5 4.5 0 0 0 8 2zM6.5 11v.5a1.5 1.5 0 0 0 3 0V11",
+  plus:        "M8 2v12M2 8h12",
+  chevDown:    "M4 6l4 4 4-4",
+  chevRight:   "M6 4l4 4-4 4",
+  chevLeft:    "M10 4l-4 4 4 4",
+  x:           "M3 3l10 10M13 3 3 13",
+  pin:         "M10 2.5 6.5 6H3.5l-.5.5 3.2 3.2-3.5 3.5.5.5 3.5-3.5 3.2 3.2.5-.5V10l3.5-3.5L10 2.5z M6.5 6l3 3",
+  users:       "M11.5 14v-1A2.5 2.5 0 0 0 9 10.5H7A2.5 2.5 0 0 0 4.5 13v1M8 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM14.5 14v-.5a2 2 0 0 0-1.5-1.95M12 4.55a2 2 0 0 1 0 3.9",
+  reply:       "M6 4L2 8l4 4M2 8h7a4 4 0 0 1 4 4v1",
+  edit:        "M11.5 2.5a1.5 1.5 0 0 1 2.1 2.1L4.5 13.6H2.5v-2L11.5 2.5z M10 4l2 2",
+  trash:       "M2.5 4.5h11M5.5 4.5V3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5M12.5 4.5l-.7 8.6a1 1 0 0 1-1 .9H5.2a1 1 0 0 1-1-.9L3.5 4.5M6.5 7.5v4M9.5 7.5v4",
+  mic:         "M8 1.5a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-5 0V4A2.5 2.5 0 0 1 8 1.5zM4 7.5a4 4 0 0 0 8 0M8 11.5v3M6 14.5h4",
+  paperclip:   "M12.5 7.5 7 13a4 4 0 0 1-5.66-5.66l5.66-5.66a2.5 2.5 0 0 1 3.54 3.54l-5.66 5.66a1 1 0 0 1-1.42-1.42l5-5",
+  arrowUp:     "M8 13V3M4 7l4-4 4 4",
+  send:        "M2 8l12-6-5 6 5 6-12-6z",
+  moreH:       "",  // dots, handled via circles
+  msgSquare:   "M13.5 2H2.5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1H5l3 2.5L11 12h2.5a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z",
+  home:        "M2 7l6-5 6 5v7.5a.5.5 0 0 1-.5.5H10v-3.5H6V15H2.5a.5.5 0 0 1-.5-.5V7z",
+  atSign:      "M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 0v1.5A3.5 3.5 0 0 0 11.5 9v-.5a3.5 3.5 0 1 0-7 0v.5",
+  user:        "M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 15a5.5 5.5 0 0 1 11 0",
+  settings2:   "M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.64 3.64l1.06 1.06M11.3 11.3l1.06 1.06M3.64 12.36l1.06-1.06M11.3 4.7l1.06-1.06",
+  menuBars:    "M2 4h12M2 8h12M2 12h12",
+  bold:        "", // handled via SVG element
+  code:        "M5 4.5L1.5 8 5 11.5M11 4.5l3.5 3.5-3.5 3.5M9.5 3l-3 10",
+};
+
+function SvgIcon({ name, size=16, color="currentColor", sw=1.5, style={} }) {
+  const base = { width:size, height:size, viewBox:"0 0 16 16", fill:"none",
+    stroke:color, strokeWidth:sw, strokeLinecap:"round", strokeLinejoin:"round",
+    style:{ flexShrink:0, display:"block", ...style } };
+  if (name === "moreH") return (
+    <svg {...base}>
+      <circle cx="3.5" cy="8" r="1.2" fill={color} stroke="none"/>
+      <circle cx="8"   cy="8" r="1.2" fill={color} stroke="none"/>
+      <circle cx="12.5"cy="8" r="1.2" fill={color} stroke="none"/>
+    </svg>
+  );
+  if (name === "smile") return (
+    <svg {...base}>
+      <circle cx="8" cy="8" r="6.5"/>
+      <path d="M5.5 9.5s.8 1.5 2.5 1.5 2.5-1.5 2.5-1.5" strokeWidth={sw}/>
+      <circle cx="5.5" cy="6.5" r="0.8" fill={color} stroke="none"/>
+      <circle cx="10.5" cy="6.5" r="0.8" fill={color} stroke="none"/>
+    </svg>
+  );
+  if (name === "gif") return (
+    <svg {...base}>
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/>
+      <path d="M5.5 6.5H4a1.5 1.5 0 0 0 0 3h1.5V8.5H5" strokeWidth={sw}/>
+      <path d="M8.5 6.5v3" strokeWidth={sw}/>
+      <path d="M11 6.5h1.5M11 8h1M11 6.5v3" strokeWidth={sw}/>
+    </svg>
+  );
+  if (name === "bold") return (
+    <svg {...base} strokeWidth={0} fill={color}>
+      <text x="4" y="12.5" fontSize="11" fontWeight="900" fontFamily="serif" stroke="none">B</text>
+    </svg>
+  );
+  if (name === "settings") return (
+    <svg {...base}>
+      <circle cx="8" cy="8" r="2.5"/>
+      <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.2 3.2l.7.7M12.1 12.1l.7.7M3.2 12.8l.7-.7M12.1 3.9l.7-.7"/>
+    </svg>
+  );
+  const d = PATHS[name];
+  if (!d) return null;
+  return <svg {...base}><path d={d}/></svg>;
+}
+
+/* ─── Mock data ───────────────────────────────────────────────────────────── */
+const ROOMS = [
+  { id:"home",  label:"home",          unread:0 },
+  { id:"gen",   label:"general",       unread:4 },
+  { id:"ann",   label:"announcements", unread:0 },
+  { id:"design",label:"design",        unread:0 },
+  { id:"dev",   label:"dev",           unread:11},
+  { id:"rnd",   label:"random",        unread:2 },
+];
+const DMS = [
+  { id:"d1", name:"Maya Chen",   av:"MC", color:"#22d3ee", status:"online",  unread:0 },
+  { id:"d2", name:"Alex Rivera", av:"AR", color:"#818cf8", status:"away",    unread:2 },
+  { id:"d3", name:"Sam Park",    av:"SP", color:"#f472b6", status:"offline", unread:0 },
+];
+const MSGS = [
+  { id:1, from:"Maya Chen", av:"MC", color:"#22d3ee", ts:"9:41 AM", cluster:"start",
+    text:"Hey team! I've been looking at the new design tokens — I think we should revisit the border radius values." },
+  { id:2, from:"Maya Chen", av:"MC", color:"#22d3ee", ts:"9:41 AM", cluster:"mid",
+    text:"The 4px rounding feels dated for what we're going for with Orbit." },
+  { id:3, from:"Maya Chen", av:"MC", color:"#22d3ee", ts:"9:42 AM", cluster:"end",
+    text:"Thoughts? 👀", reactions:[{e:"👀",n:3},{e:"💯",n:2}] },
+  { id:4, from:"Alex Rivera", av:"AR", color:"#818cf8", ts:"9:45 AM", cluster:"start",
+    text:"Agreed — MD3 pill shapes read as touchable and work really well with the dark theme." },
+  { id:5, from:"Alex Rivera", av:"AR", color:"#818cf8", ts:"9:46 AM", cluster:"end",
+    text:"Can update the component tokens this afternoon if you want to see it in the prototype.",
+    reactions:[{e:"🙌",n:4}] },
+  { id:6, from:"You", av:"JK", color:"#34d399", ts:"9:48 AM", cluster:"start", isSelf:true,
+    text:"Yes! Also thinking we bump the sidebar to slate-900 to create depth vs the main chat." },
+  { id:7, from:"You", av:"JK", color:"#34d399", ts:"9:48 AM", cluster:"end", isSelf:true,
+    text:"The flat gray is making everything feel same-y." },
+  { id:8, from:"Maya Chen", av:"MC", color:"#22d3ee", ts:"10:02 AM", cluster:"solo", divider:"10:00 AM",
+    text:"Love that. Also — ambient glow behind the logo mark? Subtle cyan, like a breathing light. ✨",
+    reactions:[{e:"✨",n:5},{e:"❤️",n:2}] },
+];
+
+/* ─── Atoms ───────────────────────────────────────────────────────────────── */
+function Avatar({ av, color, size=32, status }) {
+  return (
+    <div style={{ position:"relative", flexShrink:0 }}>
+      <div style={{
+        width:size, height:size, borderRadius:tk.r.full,
+        background:`linear-gradient(135deg,${color}22,${color}55)`,
+        border:`1.5px solid ${color}38`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        fontSize:size*.34, fontWeight:600, color, userSelect:"none",
+        letterSpacing:"-0.02em",
+      }}>{av}</div>
+      {status && (
+        <div style={{
+          position:"absolute", bottom:0, right:0,
+          width:size>28?9:7, height:size>28?9:7, borderRadius:tk.r.full,
+          background: status==="online"?"#22c55e":status==="away"?"#f59e0b":"#334155",
+          border:`2px solid ${tk.bg.surface}`,
+        }}/>
+      )}
+    </div>
+  );
+}
+
+function Pill({ n }) {
+  if (!n) return null;
+  return (
+    <div style={{
+      minWidth:18, height:18, borderRadius:tk.r.full, padding:"0 5px",
+      background:`linear-gradient(135deg,${tk.accent.cyan},${tk.accent.blue})`,
+      color:"#040810", fontSize:10, fontWeight:700,
+      display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+    }}>{n>99?"99+":n}</div>
+  );
+}
+
+function Btn({ icon, size=30, title, onClick, danger, active, color }) {
+  const [h, setH] = useState(false);
+  const ic = Math.round(size*.5);
+  return (
+    <button title={title} onClick={onClick}
+      onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+      style={{
+        width:size, height:size, borderRadius:tk.r.full, border:"none", flexShrink:0,
+        background: h ? (danger?"rgba(239,68,68,.1)": active ? tk.accent.cyanSoft : tk.bg.hover)
+                      : (active ? tk.accent.cyanSoft : "transparent"),
+        color: color || (active ? tk.accent.cyan : h ? (danger?"#f87171":tk.text.secondary) : tk.text.muted),
+        cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+        transition:"all .12s",
+      }}>
+      <SvgIcon name={icon} size={ic} color="currentColor"/>
+    </button>
+  );
+}
+
+/* ─── Sidebar content (shared desktop+mobile) ────────────────────────────── */
+function SidebarContent({ active, setActive, onClose, isMobile }) {
+  const [sr, setSr] = useState(true);
+  const [sd, setSd] = useState(true);
+
+  return (
+    <div style={{
+      display:"flex", flexDirection:"column", height:"100%",
+      background:tk.bg.surface,
+    }}>
+      {/* Brand row */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:10,
+        padding: isMobile ? "16px 14px 14px" : "15px 14px 12px",
+        borderBottom:`1px solid ${tk.border.faint}`, flexShrink:0,
+      }}>
+        {/* Logomark */}
+        <div style={{
+          width:32, height:32, borderRadius:9, flexShrink:0,
+          background:`linear-gradient(135deg,${tk.accent.cyan},${tk.accent.blue})`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          boxShadow:tk.shadow.glow,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="2.6" fill="white"/>
+            <circle cx="9" cy="9" r="6" stroke="white" strokeWidth="1.3" fill="none" opacity=".8"/>
+            <ellipse cx="9" cy="9" rx="6" ry="2.8" stroke="white" strokeWidth="1.1" fill="none" opacity=".4" transform="rotate(35 9 9)"/>
+          </svg>
+        </div>
+        <span style={{ fontWeight:700, fontSize:15, color:tk.text.primary, letterSpacing:"-.02em" }}>Orbit</span>
+        <div style={{ flex:1 }}/>
+        {isMobile
+          ? <Btn icon="x" size={28} title="Close" onClick={onClose}/>
+          : <Btn icon="pencil" size={26} title="New message"/>
+        }
+      </div>
+
+      {/* Search */}
+      <div style={{ padding:"10px 10px 6px", flexShrink:0 }}>
+        <div style={{
+          display:"flex", alignItems:"center", gap:8,
+          background:tk.bg.elevated, borderRadius:tk.r.full,
+          padding:"7px 12px", border:`1px solid ${tk.border.faint}`, cursor:"text",
+        }}>
+          <SvgIcon name="search" size={13} color={tk.text.muted}/>
+          <span style={{ fontSize:13, color:tk.text.muted, flex:1 }}>Search…</span>
+          {!isMobile && <span style={{
+            fontSize:10, color:tk.text.dim, background:tk.bg.hover,
+            padding:"2px 6px", borderRadius:tk.r.xs, letterSpacing:".02em",
+          }}>⌘K</span>}
+        </div>
+      </div>
+
+      {/* Nav list */}
+      <div style={{ flex:1, overflowY:"auto", padding:"4px 8px 8px" }}>
+        {/* Rooms */}
+        <SecHead label="Rooms" open={sr} onToggle={()=>setSr(v=>!v)} onAdd={()=>{}}/>
+        {sr && ROOMS.map(r=>(
+          <NavRow key={r.id}
+            left={<SvgIcon name="hash" size={13} color="currentColor"/>}
+            label={r.label} unread={r.unread}
+            isActive={active===r.id}
+            onClick={()=>{ setActive(r.id); if(isMobile&&onClose) onClose(); }}
+          />
+        ))}
+        <div style={{ height:8 }}/>
+        {/* DMs */}
+        <SecHead label="Direct Messages" open={sd} onToggle={()=>setSd(v=>!v)}/>
+        {sd && DMS.map(dm=>(
+          <NavRow key={dm.id}
+            left={<Avatar av={dm.av} color={dm.color} size={24} status={dm.status}/>}
+            label={dm.name} unread={dm.unread}
+            onClick={()=>{ if(isMobile&&onClose) onClose(); }}
+          />
+        ))}
+      </div>
+
+      {/* User footer */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:9,
+        padding:"10px 12px", borderTop:`1px solid ${tk.border.faint}`, flexShrink:0,
+      }}>
+        <Avatar av="JK" color="#34d399" size={30} status="online"/>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:600, color:tk.text.primary }}>Jordan K.</div>
+          <div style={{ fontSize:11, color:tk.text.muted }}>Online</div>
+        </div>
+        <Btn icon="settings" size={26} title="Settings"/>
+      </div>
+    </div>
+  );
+}
+
+function SecHead({ label, open, onToggle, onAdd }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", padding:"5px 8px 3px", gap:4 }}>
+      <button onClick={onToggle} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", cursor:"pointer", padding:0 }}>
+        <span style={{ fontSize:9.5, fontWeight:700, letterSpacing:".09em", textTransform:"uppercase", color:tk.text.muted }}>{label}</span>
+        <div style={{ transform:open?"rotate(0)":"rotate(-90deg)", transition:".15s", display:"flex" }}>
+          <SvgIcon name="chevDown" size={10} color={tk.text.muted}/>
+        </div>
+      </button>
+      <div style={{ flex:1 }}/>
+      {onAdd && (
+        <button onClick={onAdd} onMouseEnter={e=>{e.currentTarget.style.background=tk.bg.hover;e.currentTarget.style.color=tk.text.secondary;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=tk.text.muted;}}
+          style={{ width:20,height:20,borderRadius:tk.r.full,border:"none",background:"transparent",cursor:"pointer",color:tk.text.muted,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s" }}>
+          <SvgIcon name="plus" size={12} color="currentColor"/>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function NavRow({ left, label, unread, isActive, onClick }) {
+  const [h, setH] = useState(false);
+  return (
+    <button onClick={onClick}
+      onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+      style={{
+        width:"100%", display:"flex", alignItems:"center", gap:9,
+        padding:"7px 10px", borderRadius:tk.r.full, border:"none",
+        background: isActive ? tk.accent.cyanSoft : h ? tk.bg.elevated : "transparent",
+        cursor:"pointer", transition:"all .12s",
+        color: isActive ? tk.accent.cyan : tk.text.muted,
+      }}>
+      {left}
+      <span style={{ fontSize:13.5, flex:1, textAlign:"left", color: isActive?tk.text.primary:tk.text.secondary, fontWeight: isActive?600:400 }}>{label}</span>
+      <Pill n={unread}/>
+    </button>
+  );
+}
+
+/* ─── Messages ────────────────────────────────────────────────────────────── */
+function MsgItem({ msg, isMobile }) {
+  const [hov, setHov] = useState(false);
+  const isHead = msg.cluster==="start"||msg.cluster==="solo";
+  const avCol = isMobile ? 36 : 38;
+
+  return (
+    <>
+      {msg.divider && (
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px 6px" }}>
+          <div style={{ flex:1, height:1, background:tk.border.faint }}/>
+          <span style={{ fontSize:11, color:tk.text.muted, fontWeight:500, letterSpacing:".03em", padding:"3px 10px", borderRadius:tk.r.full, background:tk.bg.surface, border:`1px solid ${tk.border.faint}` }}>{msg.divider}</span>
+          <div style={{ flex:1, height:1, background:tk.border.faint }}/>
+        </div>
+      )}
+      <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+        style={{ display:"flex", gap:isMobile?10:12, padding:`${isHead?14:2}px ${isMobile?12:16}px 2px`, background: hov?"rgba(148,163,184,.025)":"transparent", transition:"background .1s", position:"relative" }}>
+        {/* Avatar col */}
+        <div style={{ width:avCol, flexShrink:0, paddingTop: isHead?2:0 }}>
+          {isHead && <Avatar av={msg.av} color={msg.color} size={avCol}/>}
+          {!isHead && hov && !isMobile && (
+            <span style={{ fontSize:10, color:tk.text.muted, display:"block", textAlign:"right", paddingTop:5 }}>{msg.ts.split(" ")[0]}</span>
+          )}
+        </div>
+        {/* Body */}
+        <div style={{ flex:1, minWidth:0 }}>
+          {isHead && (
+            <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:3 }}>
+              <span style={{ fontSize:14, fontWeight:600, color:msg.isSelf?"#34d399":msg.color }}>{msg.from}</span>
+              <span style={{ fontSize:11, color:tk.text.muted }}>{msg.ts}</span>
+            </div>
+          )}
+          <div style={{ fontSize:14, color:tk.text.primary, lineHeight:1.62, wordBreak:"break-word" }}>
+            {msg.text}
+          </div>
+          {msg.reactions && (
+            <div style={{ display:"flex", gap:5, marginTop:6, flexWrap:"wrap" }}>
+              {msg.reactions.map((r,i)=><RxnPill key={i} e={r.e} n={r.n}/>)}
+              <AddRxn/>
+            </div>
+          )}
+        </div>
+        {/* Hover actions — desktop only */}
+        {hov && !isMobile && <FloatActions/>}
+      </div>
+    </>
+  );
+}
+
+function RxnPill({ e, n }) {
+  const [h, setH] = useState(false);
+  return (
+    <div onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+      style={{ display:"flex", alignItems:"center", gap:4, padding:"3px 9px", borderRadius:tk.r.full, cursor:"pointer", transition:"all .12s", background:h?`${tk.accent.cyan}18`:tk.accent.cyanSoft, border:`1px solid ${h?tk.accent.cyan:tk.border.focus}` }}>
+      <span style={{ fontSize:13 }}>{e}</span>
+      <span style={{ fontSize:11, fontWeight:700, color:tk.accent.cyan }}>{n}</span>
+    </div>
+  );
+}
+
+function AddRxn() {
+  const [h, setH] = useState(false);
+  return (
+    <div onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+      style={{ width:28, height:28, borderRadius:tk.r.full, cursor:"pointer", transition:"all .12s", border:`1px solid ${h?tk.border.focus:tk.border.subtle}`, display:"flex", alignItems:"center", justifyContent:"center", color:h?tk.accent.cyan:tk.text.muted }}>
+      <SvgIcon name="smile" size={13} color="currentColor"/>
+    </div>
+  );
+}
+
+function FloatActions() {
+  return (
+    <div style={{ position:"absolute", top:6, right:16, display:"flex", gap:1, padding:"3px 5px", background:tk.bg.elevated, border:`1px solid ${tk.border.subtle}`, borderRadius:tk.r.full, boxShadow:tk.shadow.lg, zIndex:10, animation:"fadeIn .1s ease" }}>
+      {[{i:"smile",t:"React"},{i:"reply",t:"Reply"},{i:"edit",t:"Edit"},{i:"trash",t:"Delete",d:true}].map(a=>(
+        <Btn key={a.i} icon={a.i} size={30} title={a.t} danger={a.d}/>
+      ))}
+    </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px 6px" }}>
+      <div style={{ width:38, display:"flex", justifyContent:"center" }}>
+        <Avatar av="AR" color="#818cf8" size={24}/>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:tk.r.full, background:tk.bg.elevated, border:`1px solid ${tk.border.faint}` }}>
+        {[0,1,2].map(i=><div key={i} style={{ width:5, height:5, borderRadius:tk.r.full, background:tk.text.muted, animation:`bounce .9s ease ${i*.18}s infinite` }}/>)}
+      </div>
+      <span style={{ fontSize:12, color:tk.text.muted }}><span style={{ color:"#818cf8", fontWeight:500 }}>Alex</span> is typing…</span>
+    </div>
+  );
+}
+
+/* ─── Composer ────────────────────────────────────────────────────────────── */
+function Composer({ isMobile }) {
+  const [val, setVal] = useState("");
+  const [foc, setFoc] = useState(false);
+  const ta = useRef(null);
+
+  useEffect(()=>{
+    if(ta.current){ ta.current.style.height="auto"; ta.current.style.height=Math.min(ta.current.scrollHeight,120)+"px"; }
+  },[val]);
+
+  const has = val.trim().length > 0;
+
+  const tools = [
+    {i:"smile",   t:"Emoji"},
+    {i:"gif",     t:"GIF"},
+    {i:"mic",     t:"Voice"},
+    {i:"paperclip",t:"Attach"},
+    ...(isMobile ? [] : [{i:"bold",t:"Bold"},{i:"code",t:"Code"}]),
+  ];
+
+  return (
+    <div style={{ padding: isMobile?"8px 12px 12px":"10px 16px 16px", flexShrink:0 }}>
+      <div style={{
+        background:tk.bg.elevated,
+        border:`1.5px solid ${foc?tk.border.focus:tk.border.subtle}`,
+        borderRadius:tk.r["2xl"], overflow:"hidden", transition:"border-color .15s",
+        boxShadow: foc?`0 0 0 3px ${tk.accent.cyanSoft}`:tk.shadow.sm,
+      }}>
+        <div style={{ padding:`${isMobile?9:10}px 14px 0` }}>
+          <textarea ref={ta} value={val}
+            onChange={e=>setVal(e.target.value)}
+            onFocus={()=>setFoc(true)} onBlur={()=>setFoc(false)}
+            onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); if(has) setVal(""); }}}
+            placeholder={`Message #design`} rows={1}
+            style={{ width:"100%", background:"transparent", border:"none", outline:"none", color:tk.text.primary, fontSize:14, lineHeight:1.55, resize:"none", maxHeight:120, overflow:"auto" }}
+          />
+        </div>
+        <div style={{ display:"flex", alignItems:"center", padding:`${isMobile?4:5}px 8px` }}>
+          {tools.map(t=><Btn key={t.i} icon={t.i} size={isMobile?32:30} title={t.t}/>)}
+          <div style={{ flex:1 }}/>
+          <button onClick={()=>{ if(has) setVal(""); }}
+            style={{
+              width:isMobile?36:32, height:isMobile?36:32, borderRadius:tk.r.full, border:"none",
+              background: has?`linear-gradient(135deg,${tk.accent.cyan},${tk.accent.blue})`:tk.bg.hover,
+              color: has?"#040810":tk.text.muted, cursor: has?"pointer":"default",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              transition:"all .18s", boxShadow: has?tk.shadow.glow:"none",
+            }}>
+            <SvgIcon name="arrowUp" size={isMobile?16:14} color="currentColor" sw={2}/>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Desktop layout ──────────────────────────────────────────────────────── */
+function DesktopApp({ active, setActive }) {
+  return (
+    <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", background:tk.bg.base, overflow:"hidden" }}>
+      {/* Titlebar */}
+      <div style={{ height:42, flexShrink:0, display:"flex", alignItems:"center", padding:"0 16px", background:tk.bg.surface, borderBottom:`1px solid ${tk.border.faint}`, gap:8 }}>
+        <div style={{ display:"flex", gap:6 }}>
+          {["#ff5f57","#febc2e","#28c840"].map((c,i)=><div key={i} style={{ width:11, height:11, borderRadius:tk.r.full, background:c }}/>)}
+        </div>
+        <div style={{ flex:1 }}/>
+        <span style={{ fontSize:12, fontWeight:600, color:tk.text.muted, letterSpacing:".05em" }}>
+          ORBIT — #{ROOMS.find(r=>r.id===active)?.label || active}
+        </span>
+        <div style={{ flex:1 }}/>
+        <Btn icon="bell" size={28} title="Notifications"/>
+        <Avatar av="JK" color="#34d399" size={26} status="online"/>
+      </div>
+      {/* Body */}
+      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+        {/* Sidebar */}
+        <div style={{ width:232, flexShrink:0, height:"100%", borderRight:`1px solid ${tk.border.faint}` }}>
+          <SidebarContent active={active} setActive={setActive} isMobile={false}/>
+        </div>
+        {/* Chat */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
+          {/* Channel header */}
+          <div style={{ height:52, display:"flex", alignItems:"center", gap:8, padding:"0 16px", flexShrink:0, borderBottom:`1px solid ${tk.border.faint}`, overflow:"hidden" }}>
+            {/* Left: icon + name + description — grows, truncates */}
+            <SvgIcon name="hash" size={16} color={tk.accent.cyan} sw={2.2} style={{flexShrink:0}}/>
+            <div style={{ flex:1, minWidth:0, display:"flex", alignItems:"center", gap:8, overflow:"hidden" }}>
+              <span style={{ fontSize:15, fontWeight:700, color:tk.text.primary, letterSpacing:"-.01em", whiteSpace:"nowrap", flexShrink:0 }}>
+                {ROOMS.find(r=>r.id===active)?.label || active}
+              </span>
+              <div style={{ width:1, height:14, background:tk.border.subtle, flexShrink:0 }}/>
+              <span style={{ fontSize:12, color:tk.text.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                Design system, components &amp; visual direction
+              </span>
+            </div>
+            {/* Right: actions — fixed width, never shrinks */}
+            <div style={{ display:"flex", alignItems:"center", gap:2, flexShrink:0 }}>
+              <Btn icon="search" size={30} title="Search channel"/>
+              <Btn icon="pin"    size={30} title="Pinned messages"/>
+              <Btn icon="users"  size={30} title="Members"/>
+              <Btn icon="moreH"  size={30} title="More options"/>
+              <div style={{ display:"flex", alignItems:"center", marginLeft:8 }}>
+                {[{av:"MC",c:"#22d3ee"},{av:"AR",c:"#818cf8"},{av:"JK",c:"#34d399"}].map((a,i)=>(
+                  <div key={i} style={{ marginLeft:i>0?-7:0, zIndex:3-i, flexShrink:0 }}><Avatar av={a.av} color={a.c} size={24}/></div>
+                ))}
+                <div style={{ width:24, height:24, borderRadius:tk.r.full, marginLeft:-7, background:tk.bg.hover, border:`1.5px solid ${tk.bg.base}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:tk.text.muted, fontWeight:700, flexShrink:0 }}>+4</div>
+              </div>
+            </div>
+          </div>
+          {/* Feed */}
+          <div style={{ flex:1, overflowY:"auto", paddingTop:8, paddingBottom:4 }}>
+            {MSGS.map(m=><MsgItem key={m.id} msg={m} isMobile={false}/>)}
+            <TypingDots/>
+          </div>
+          <Composer isMobile={false}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Mobile layout ───────────────────────────────────────────────────────── */
+function MobileApp({ active, setActive }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tab, setTab] = useState("rooms");
+
+  // Bottom tab definitions
+  const tabs = [
+    { id:"rooms",    icon:"home",      label:"Home"     },
+    { id:"search",   icon:"search",    label:"Search"   },
+    { id:"mentions", icon:"atSign",    label:"Mentions" },
+    { id:"dms",      icon:"msgSquare", label:"Messages" },
+    { id:"profile",  icon:"user",      label:"Profile"  },
+  ];
+
+  return (
+    <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", background:tk.bg.base, overflow:"hidden", position:"relative" }}>
+
+      {/* Drawer overlay */}
+      {drawerOpen && (
+        <div onClick={()=>setDrawerOpen(false)}
+          style={{ position:"absolute", inset:0, background:"rgba(2,6,23,.75)", zIndex:40, backdropFilter:"blur(2px)" }}/>
+      )}
+      {/* Drawer panel */}
+      <div style={{
+        position:"absolute", top:0, left:0, bottom:0, width:280, zIndex:50,
+        transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
+        transition:"transform .25s cubic-bezier(.4,0,.2,1)",
+        boxShadow: drawerOpen ? "8px 0 40px rgba(0,0,0,.7)" : "none",
+      }}>
+        <SidebarContent active={active} setActive={setActive} isMobile={true} onClose={()=>setDrawerOpen(false)}/>
+      </div>
+
+      {/* Top app bar */}
+      <div style={{
+        height:52, flexShrink:0, display:"flex", alignItems:"center",
+        padding:"0 12px", background:tk.bg.surface,
+        borderBottom:`1px solid ${tk.border.faint}`,
+        gap:4,
+      }}>
+        <Btn icon="menuBars" size={36} title="Menu" onClick={()=>setDrawerOpen(true)}/>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, justifyContent:"center" }}>
+          <SvgIcon name="hash" size={16} color={tk.accent.cyan} sw={2.2}/>
+          <span style={{ fontSize:15, fontWeight:700, color:tk.text.primary, letterSpacing:"-.01em" }}>
+            {ROOMS.find(r=>r.id===active)?.label || active}
+          </span>
+        </div>
+        <Btn icon="users"  size={36} title="Members"/>
+        <Btn icon="moreH"  size={36} title="More"/>
+      </div>
+
+      {/* Message feed */}
+      <div style={{ flex:1, overflowY:"auto", paddingTop:6, paddingBottom:4 }}>
+        {MSGS.map(m=><MsgItem key={m.id} msg={m} isMobile={true}/>)}
+        <TypingDots/>
+      </div>
+
+      {/* Composer */}
+      <Composer isMobile={true}/>
+
+      {/* Bottom tab bar */}
+      <div style={{
+        height:64, flexShrink:0, display:"flex", alignItems:"center",
+        background:tk.bg.surface, borderTop:`1px solid ${tk.border.faint}`,
+        padding:"0 4px 4px",
+      }}>
+        {tabs.map(t=>{
+          const isAct = tab===t.id;
+          return (
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={{
+                flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                gap:3, height:"100%", border:"none", background:"transparent", cursor:"pointer",
+                color: isAct ? tk.accent.cyan : tk.text.muted, transition:"color .15s",
+                position:"relative",
+              }}>
+              {/* Active indicator pip */}
+              {isAct && (
+                <div style={{ position:"absolute", top:6, width:20, height:3, borderRadius:tk.r.full, background:`linear-gradient(90deg,${tk.accent.cyan},${tk.accent.blue})` }}/>
+              )}
+              <SvgIcon name={t.icon} size={20} color="currentColor" sw={isAct?2:1.5}/>
+              <span style={{ fontSize:10, fontWeight: isAct?600:400, letterSpacing:".01em" }}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Viewport switcher shell ─────────────────────────────────────────────── */
+function App() {
+  const [vp, setVp] = useState("desktop");
+  const [active, setActive] = useState("design");
+
+  const VIEWPORTS = [
+    { id:"desktop", label:"Desktop", w:1200, h:720 },
+    { id:"tablet",  label:"Tablet",  w:768,  h:600 },
+    { id:"mobile",  label:"Mobile",  w:390,  h:780 },
+  ];
+  const cur = VIEWPORTS.find(v=>v.id===vp);
+  const isMobile = vp==="mobile" || vp==="tablet";
+
+  return (
+    <div style={{ width:"100vw", height:"100vh", background:tk.bg.page, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", overflow:"hidden" }}>
+      {/* Toolbar */}
+      <div style={{
+        width:"100%", height:48, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+        gap:6, borderBottom:`1px solid ${tk.border.faint}`, background:tk.bg.surface,
+      }}>
+        {/* Orbit wordmark */}
+        <div style={{ position:"absolute", left:20, display:"flex", alignItems:"center", gap:7 }}>
+          <div style={{ width:22, height:22, borderRadius:6, background:`linear-gradient(135deg,${tk.accent.cyan},${tk.accent.blue})`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="2.6" fill="white"/>
+              <circle cx="9" cy="9" r="6" stroke="white" strokeWidth="1.5" fill="none" opacity=".8"/>
+            </svg>
+          </div>
+          <span style={{ fontSize:12.5, fontWeight:700, color:tk.text.secondary, letterSpacing:".03em" }}>ORBIT MOCKUP</span>
+        </div>
+
+        {/* Viewport pills */}
+        <div style={{ display:"flex", background:tk.bg.elevated, borderRadius:tk.r.full, padding:3, border:`1px solid ${tk.border.faint}`, gap:2 }}>
+          {VIEWPORTS.map(v=>(
+            <button key={v.id} onClick={()=>setVp(v.id)}
+              style={{
+                padding:"5px 14px", borderRadius:tk.r.full, border:"none", cursor:"pointer",
+                fontSize:12.5, fontWeight: vp===v.id?600:400, transition:"all .15s",
+                background: vp===v.id?`linear-gradient(135deg,${tk.accent.cyan}22,${tk.accent.blue}22)`:"transparent",
+                color: vp===v.id?tk.text.primary:tk.text.muted,
+                boxShadow: vp===v.id?`inset 0 0 0 1px ${tk.border.focus}`:"none",
+              }}>{v.label}</button>
+          ))}
+        </div>
+
+        <span style={{ position:"absolute", right:20, fontSize:11, color:tk.text.muted, fontFamily:"monospace" }}>
+          {cur.w}×{cur.h}
+        </span>
+      </div>
+
+      {/* Frame */}
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:24 }}>
+        <div style={{
+          width:  Math.min(cur.w,  window.innerWidth  - 48),
+          height: Math.min(cur.h,  window.innerHeight - 96),
+          borderRadius: vp==="mobile"?36:16,
+          overflow:"hidden",
+          boxShadow:`0 24px 80px rgba(0,0,0,.7), 0 0 0 1px ${tk.border.subtle}`,
+          border: vp==="mobile"?`6px solid ${tk.bg.elevated}`:`1px solid ${tk.border.faint}`,
+          transition:"all .3s cubic-bezier(.4,0,.2,1)",
+          position:"relative", flexShrink:0,
+        }}>
+          {/* Mobile notch */}
+          {vp==="mobile" && (
+            <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", width:100, height:24, background:tk.bg.elevated, borderRadius:"0 0 16px 16px", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:tk.r.full, background:"#1a2535" }}/>
+              <div style={{ width:40, height:5, borderRadius:tk.r.full, background:"#1a2535" }}/>
+            </div>
+          )}
+          {isMobile
+            ? <MobileApp active={active} setActive={setActive}/>
+            : <DesktopApp active={active} setActive={setActive}/>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

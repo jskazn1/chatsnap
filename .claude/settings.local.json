@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "WebFetch(domain:jordansk-chatter202020.web.app)",
+      "Bash(which firebase:*)",
+      "Bash(npm install:*)",
+      "Bash(firebase login:*)",
+      "Bash(firebase:*)"
+    ]
+  }
+}

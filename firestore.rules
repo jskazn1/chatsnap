@@ -1,82 +1,165 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /messages/{messageId} {
-      allow read: if request.auth != null;
 
-      allow create: if request.auth != null
-        && request.resource.data.keys().hasAll(['room', 'ts', 'name', 'uid'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 50
-        && request.resource.data.room is string
-        && request.resource.data.room.size() > 0;
+    // ─── Helper functions ──────────────────────────────────────────────────────
 
-      allow update: if request.auth != null
-        && resource.data.uid == request.auth.uid;
-
-      allow delete: if request.auth != null
-        && resource.data.uid == request.auth.uid;
+    // Is the calling user currently banned/timed-out in this room?
+    function isBannedInRoom(roomData) {
+      let bans = roomData.get('roomBans', {});
+      let entry = bans.get(request.auth.uid, null);
+      return entry != null && entry.until > request.time;
     }
 
+    // Is the calling user a moderator or the creator of this room?
+    function isModOrOwner(roomData) {
+      return request.auth.uid == roomData.createdBy
+        || (roomData.get('moderators', []).hasAny([request.auth.uid]));
+    }
+
+    // Returns the set of keys that changed in this write
+    function changedKeys(prev, next) {
+      return next.diff(prev).affectedKeys();
+    }
+
+    // ─── Users ─────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null;
+
       allow write: if request.auth != null
-        && request.auth.uid == userId;
+        && request.auth.uid == userId
+        // Enforce display name length when it is present in the write
+        && (!('displayName' in request.resource.data)
+            || (request.resource.data.displayName is string
+                && request.resource.data.displayName.size() >= 1
+                && request.resource.data.displayName.size() <= 50));
     }
 
-    match /conversations/{convoId} {
-      allow read: if request.auth != null
-        && request.auth.uid in resource.data.participantIds;
+    // ─── Rooms ─────────────────────────────────────────────────────────────────
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
 
       allow create: if request.auth != null
-        && request.auth.uid in request.resource.data.participantIds;
+        && request.resource.data.createdBy == request.auth.uid
+        // Enforce name + description length on create
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 120;
+
+      // Members can update general fields; only mods/owner can touch moderation fields
+      allow update: if request.auth != null && (
+        // Moderator / owner: can update anything
+        isModOrOwner(resource.data)
+        ||
+        // Regular member: can only update non-moderation fields
+        (
+          request.auth.uid in resource.data.get('members', [])
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['slowMode', 'moderators', 'blockedWords', 'roomBans'])
+        )
+      );
+
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.createdBy;
+
+      // ─── Room messages ──────────────────────────────────────────────────────
+      match /messages/{messageId} {
+        allow read: if request.auth != null;
+
+        // Block banned users from posting; enforce message ownership + length
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000
+          && !isBannedInRoom(get(/databases/$(database)/documents/rooms/$(roomId)).data);
+
+        allow update: if request.auth != null && (
+          // Author can edit any field on their own message
+          resource.data.uid == request.auth.uid
+          ||
+          // Any authenticated user may toggle their own reaction (only reactions field changes)
+          changedKeys(resource.data, request.resource.data).hasOnly(['reactions'])
+          ||
+          // Mods and room owner can pin / unpin messages (only pinned field changes)
+          (
+            changedKeys(resource.data, request.resource.data).hasOnly(['pinned'])
+            && isModOrOwner(get(/databases/$(database)/documents/rooms/$(roomId)).data)
+          )
+        );
+
+        allow delete: if request.auth != null
+          && (
+            resource.data.uid == request.auth.uid
+            || isModOrOwner(get(/databases/$(database)/documents/rooms/$(roomId)).data)
+          );
+      }
+    }
+
+    // ─── Conversations (DMs) ───────────────────────────────────────────────────
+    match /conversations/{convoId} {
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.participants;
+
+      allow create: if request.auth != null
+        && request.auth.uid in request.resource.data.participants;
 
       allow update: if request.auth != null
-        && request.auth.uid in resource.data.participantIds;
+        && request.auth.uid in resource.data.participants;
 
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if request.auth != null;
+        // Only participants of this conversation may read its messages
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.participants;
 
         allow create: if request.auth != null
-          && request.resource.data.uid == request.auth.uid;
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000;
 
-        allow update: if request.auth != null
-          && resource.data.uid == request.auth.uid;
+        // Author can edit their own message; anyone can update reactions
+        allow update: if request.auth != null && (
+          resource.data.uid == request.auth.uid
+          ||
+          changedKeys(resource.data, request.resource.data).hasOnly(['reactions'])
+        );
 
         allow delete: if request.auth != null
           && resource.data.uid == request.auth.uid;
       }
     }
 
+    // ─── Typing indicators ─────────────────────────────────────────────────────
     match /typing/{locationId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
 
-    match /rooms/{roomId} {
+    // ─── Room metadata (unread tracking) ──────────────────────────────────────
+    // Only allow writes that set/update the lastMessageAt field.
+    match /roomMeta/{slug} {
       allow read: if request.auth != null;
-
-      allow create: if request.auth != null
-        && request.resource.data.createdBy == request.auth.uid;
-
-      allow update: if request.auth != null
-        && (request.auth.uid in resource.data.admins
-            || request.auth.uid in resource.data.members);
-
-      allow delete: if request.auth != null
-        && request.auth.uid in resource.data.admins;
+      allow write: if request.auth != null
+        && request.resource.data.keys().hasOnly(['lastMessageAt']);
     }
 
+    // ─── User read receipts ────────────────────────────────────────────────────
+    match /userReads/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Reports ───────────────────────────────────────────────────────────────
     match /reports/{reportId} {
-      allow read: if false;
-
+      allow read: if false; // Only readable by admin SDK / Cloud Functions
       allow create: if request.auth != null
-        && request.resource.data.reporterUid == request.auth.uid;
-
+        && request.resource.data.reportedBy == request.auth.uid
+        // Cap reason length at 500 chars
+        && (!('reason' in request.resource.data)
+            || request.resource.data.reason.size() <= 500);
       allow update: if false;
       allow delete: if false;
     }

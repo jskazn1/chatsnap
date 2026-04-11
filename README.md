@@ -2,7 +2,7 @@
 
 Real-time messaging that moves at the speed of thought.
 
-**Live:** https://surge-bitfit.web.app
+**Live:** https://orbit-msg.web.app
 
 ## Tech Stack
 
@@ -28,5 +28,5 @@ Real-time messaging that moves at the speed of thought.
 npm install
 npm run dev        # dev server at localhost:5173
 npm run build      # production build → build/
-firebase deploy --only hosting  # deploy to surge-bitfit.web.app
+firebase deploy --only hosting  # deploy to orbit-msg.web.app
 ```

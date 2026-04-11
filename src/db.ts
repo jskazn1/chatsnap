@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { initializeApp } from 'firebase/app'
 import {
-  getFirestore, collection, addDoc, deleteDoc, updateDoc,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, addDoc, deleteDoc, updateDoc,
   doc, setDoc, getDoc, getDocs, query, where, orderBy,
   limit, onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
   Timestamp,
@@ -10,17 +11,26 @@ import { getStorage } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCN9tbxNhqa6lnmZNMZCjD0fUWjdrrtEHY",
-  authDomain: "surge-bitfit.web.app",
-  projectId: "jordansk-chatter202020",
-  storageBucket: "jordansk-chatter202020.appspot.com",
-  messagingSenderId: "641423998667",
-  appId: "1:641423998667:web:53ca6f59b00827dbbe254e",
-  measurementId: "G-25QEBFG3BZ",
+  apiKey: "AIzaSyCBOgBnCSt91njdIo6Jk-Qhb40WR4yK1Pw",
+  // authDomain matches the hosting domain so Google's OAuth popup opens at the
+  // right URL. main.jsx intercepts /__/auth/ paths to prevent the React app
+  // rendering inside the popup window.
+  authDomain: "orbit-msg.web.app",
+  projectId: "orbit-msg",
+  storageBucket: "orbit-msg.firebasestorage.app",
+  messagingSenderId: "873032840612",
+  appId: "1:873032840612:web:7570ec3d6541624e403d31",
+  measurementId: "G-PK5TSTPF0Z",
 }
 
 const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
+
+// Enable IndexedDB offline persistence with multi-tab support (Phase 4)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+})
 export const store = db
 export const storage = getStorage(app)
 export const auth = getAuth(app)
@@ -51,6 +61,11 @@ export interface Room {
   isPrivate: boolean
   joinCode?: string
   memberCount: number
+  // Moderation fields
+  slowMode?: number             // seconds between messages per user (0 = off)
+  moderators?: string[]         // UIDs with mod powers
+  blockedWords?: string[]       // word filter list
+  roomBans?: Record<string, { until: Timestamp; reason: string }> // uid → ban info
   members?: string[]
   createdAt: Timestamp | null
   createdBy: string
@@ -113,10 +128,16 @@ export function useRoomInfo(roomId: string | null) {
 }
 
 export async function createRoom(name: string, description: string, isPrivate: boolean, uid: string): Promise<Room> {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const trimmedName = name.trim()
+  const trimmedDesc = description.trim()
+  if (!trimmedName) throw new Error('Room name cannot be empty.')
+  if (trimmedName.length > 40) throw new Error('Room name must be 40 characters or fewer.')
+  if (trimmedDesc.length > 120) throw new Error('Room description must be 120 characters or fewer.')
+  const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (!slug) throw new Error('Room name must contain at least one letter or number.')
   const joinCode = isPrivate ? Math.random().toString(36).substring(2, 8).toUpperCase() : undefined
   const data: Omit<Room, 'id'> = {
-    name, slug, description, isPrivate,
+    name: trimmedName, slug, description: trimmedDesc, isPrivate,
     ...(joinCode && { joinCode }),
     memberCount: 1,
     members: [uid],
@@ -174,6 +195,7 @@ export function useDMMessages(convoId: string | null) {
 }
 
 export async function createOrGetConversation(uid1: string, uid2: string): Promise<string> {
+  if (uid1 === uid2) throw new Error('Cannot start a conversation with yourself.')
   const participants = [uid1, uid2].sort()
   const snap = await getDocs(query(collection(db, 'conversations'), where('participants', '==', participants)))
   if (!snap.empty) return snap.docs[0].id
@@ -200,9 +222,16 @@ export async function deleteMessage(collPath: string, msgId: string): Promise<vo
 }
 
 export async function addReaction(collPath: string, msgId: string, emoji: string, uid: string): Promise<void> {
+  // Validate: short, non-empty, no dots (dots create nested Firestore paths → crash)
+  if (!emoji || emoji.trim().length === 0 || emoji.length > 10 || emoji.includes('.')) return
+
+  // Check current state to determine add vs remove
   const snap = await getDoc(doc(db, collPath, msgId))
   if (!snap.exists()) return
   const users: string[] = (snap.data().reactions || {})[emoji] || []
+
+  // Use arrayUnion/arrayRemove (atomic server-side ops) to avoid race conditions
+  // where two simultaneous reactions overwrite each other
   await updateDoc(doc(db, collPath, msgId), {
     [`reactions.${emoji}`]: users.includes(uid) ? arrayRemove(uid) : arrayUnion(uid),
   })
@@ -217,17 +246,19 @@ export async function unpinMessage(collPath: string, msgId: string): Promise<voi
 }
 
 export async function reportMessage(messageId: string, reportedBy: string, reason: string): Promise<void> {
-  await addDoc(collection(db, 'reports'), { messageId, reportedBy, reason, createdAt: serverTimestamp() })
+  const trimmedReason = reason.trim().slice(0, 500) // cap report reason at 500 chars
+  await addDoc(collection(db, 'reports'), { messageId, reportedBy, reason: trimmedReason, createdAt: serverTimestamp() })
 }
 
 // ─── User Operations ─────────────────────────────────────────────────────────
 
 export async function searchUsers(term: string): Promise<UserProfile[]> {
-  if (!term.trim()) return []
+  const trimmed = term.trim().slice(0, 50) // cap search term to 50 chars
+  if (trimmed.length < 2) return []         // require at least 2 chars to avoid full-table scans
   const snap = await getDocs(query(
     collection(db, 'users'),
-    where('displayName', '>=', term),
-    where('displayName', '<=', term + '\uf8ff'),
+    where('displayName', '>=', trimmed),
+    where('displayName', '<=', trimmed + '\uf8ff'),
     limit(10),
   ))
   return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile))
@@ -281,4 +312,208 @@ export async function searchMessages(collPath: string, term: string): Promise<Ch
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() } as ChatMessage))
     .filter(m => m.text?.toLowerCase().includes(term.toLowerCase()))
+}
+
+// ─── Sprint 1: Room Message Sending + Unread Tracking ────────────────────────
+
+/**
+ * Send a message to a room and stamp roomMeta/{slug}.lastMessageAt
+ * so unread badge logic can compare against the user's lastReadAt.
+ */
+export async function sendRoomMessage(roomSlug: string, message: Omit<ChatMessage, 'id'>): Promise<void> {
+  // Find the room doc by slug to get its Firestore ID
+  const snap = await getDocs(query(collection(db, 'rooms'), where('slug', '==', roomSlug), limit(1)))
+  if (snap.empty) throw new Error(`Room "${roomSlug}" not found`)
+  const roomId = snap.docs[0].id
+  await addDoc(collection(db, 'rooms', roomId, 'messages'), { ...message, createdAt: serverTimestamp() })
+  await setDoc(doc(db, 'roomMeta', roomSlug), { lastMessageAt: serverTimestamp() }, { merge: true })
+}
+
+/**
+ * Listens to the roomMeta collection.
+ * Returns a map of { [slug]: lastMessageAt_ms }
+ */
+export function useRoomMeta() {
+  const [meta, setMeta] = useState<Record<string, number>>({})
+  useEffect(() => {
+    return onSnapshot(collection(db, 'roomMeta'), snap => {
+      const m: Record<string, number> = {}
+      snap.docs.forEach(d => {
+        const ts = d.data().lastMessageAt
+        m[d.id] = ts?.toMillis?.() ?? 0
+      })
+      setMeta(m)
+    })
+  }, [])
+  return meta
+}
+
+/**
+ * Listens to userReads/{uid}.
+ * Returns a map of { [channelId]: lastReadAt_ms }
+ * channelId = room slug for rooms, convoId for DMs.
+ */
+export function useUnreadCounts(uid: string) {
+  const [reads, setReads] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!uid) return
+    return onSnapshot(doc(db, 'userReads', uid), snap => {
+      if (!snap.exists()) { setReads({}); return }
+      const data = snap.data()
+      const r: Record<string, number> = {}
+      Object.entries(data).forEach(([k, v]: [string, any]) => {
+        r[k] = v?.toMillis?.() ?? (typeof v === 'number' ? v : 0)
+      })
+      setReads(r)
+    })
+  }, [uid])
+  return reads
+}
+
+/**
+ * Mark a channel (room slug or DM convoId) as read by writing
+ * the current server timestamp to userReads/{uid}.{channelId}.
+ */
+export async function markChannelAsRead(uid: string, channelId: string): Promise<void> {
+  await setDoc(doc(db, 'userReads', uid), { [channelId]: serverTimestamp() }, { merge: true })
+}
+
+// ─── Moderation ───────────────────────────────────────────────────────────────
+
+/**
+ * Set slow mode for a room. Only room owner / moderators should call this.
+ * slowSeconds: 0 disables slow mode; any positive number is the per-user cooldown.
+ */
+export async function setRoomSlowMode(roomId: string, slowSeconds: number): Promise<void> {
+  await updateDoc(doc(db, 'rooms', roomId), { slowMode: slowSeconds })
+}
+
+/**
+ * Update the blocked-words list for a room.
+ */
+export async function setRoomBlockedWords(roomId: string, words: string[]): Promise<void> {
+  // Cap: max 200 entries, each entry max 100 chars, skip blank entries
+  const sanitized = words
+    .map(w => w.trim().slice(0, 100))
+    .filter(Boolean)
+    .slice(0, 200)
+  await updateDoc(doc(db, 'rooms', roomId), { blockedWords: sanitized })
+}
+
+/**
+ * Add a moderator to a room.
+ */
+export async function addModerator(roomId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'rooms', roomId), { moderators: arrayUnion(uid) })
+}
+
+/**
+ * Remove a moderator from a room.
+ */
+export async function removeModerator(roomId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'rooms', roomId), { moderators: arrayRemove(uid) })
+}
+
+/**
+ * Timeout a user in a room for `durationMinutes`.
+ * Sets roomBans.{uid}.until to now + duration.
+ * Moderators and room owners can call this.
+ */
+export async function timeoutUser(
+  roomId: string, targetUid: string, durationMinutes: number, reason = 'Violation of community guidelines'
+): Promise<void> {
+  const until = new Date(Date.now() + durationMinutes * 60 * 1000)
+  await updateDoc(doc(db, 'rooms', roomId), {
+    [`roomBans.${targetUid}`]: { until: Timestamp.fromDate(until), reason },
+  })
+}
+
+/**
+ * Lift a timeout / ban from a user in a room.
+ */
+export async function liftTimeout(roomId: string, targetUid: string): Promise<void> {
+  await updateDoc(doc(db, 'rooms', roomId), {
+    [`roomBans.${targetUid}`]: null,
+  })
+}
+
+/**
+ * Check if a user is currently timed out in a room.
+ * Returns { banned: true, until, reason } or { banned: false }.
+ */
+export async function checkRoomBan(
+  roomId: string, uid: string
+): Promise<{ banned: boolean; until?: Date; reason?: string }> {
+  const snap = await getDoc(doc(db, 'rooms', roomId))
+  if (!snap.exists()) return { banned: false }
+  const bans = snap.data().roomBans || {}
+  const entry = bans[uid]
+  if (!entry) return { banned: false }
+  const until = entry.until?.toDate()
+  if (!until || until < new Date()) return { banned: false }
+  return { banned: true, until, reason: entry.reason }
+}
+
+// ─── Online Presence ──────────────────────────────────────────────────────────
+
+/**
+ * Write the current user's online status to presence/{uid}.
+ * Call on mount and resume (visibilitychange).
+ */
+export async function setPresence(uid: string): Promise<void> {
+  await setDoc(doc(db, 'presence', uid), { online: true, lastSeen: serverTimestamp() }, { merge: true })
+}
+
+/**
+ * Mark the user as offline. Call on beforeunload / visibility hidden.
+ */
+export async function clearPresence(uid: string): Promise<void> {
+  await setDoc(doc(db, 'presence', uid), { online: false, lastSeen: serverTimestamp() }, { merge: true })
+}
+
+/**
+ * Subscribe to presence docs for a set of UIDs.
+ * Returns a Set of UIDs currently online.
+ */
+export function useOnlineUsers(uids: string[]): Set<string> {
+  const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set())
+  const key = uids.slice().sort().join(',')
+  useEffect(() => {
+    if (!uids.length) return
+    const unsubs = uids.map(uid =>
+      onSnapshot(doc(db, 'presence', uid), snap => {
+        const data = snap.data()
+        setOnlineSet(prev => {
+          const next = new Set(prev)
+          if (data?.online) next.add(uid)
+          else next.delete(uid)
+          return next
+        })
+      })
+    )
+    return () => unsubs.forEach(u => u())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return onlineSet
+}
+
+/**
+ * Checks a message text against a room's blocked-word list.
+ * Returns the first matched word, or null if clean.
+ */
+export function checkWordFilter(text: string, blockedWords: string[]): string | null {
+  if (!blockedWords?.length) return null
+  const lower = text.toLowerCase()
+  for (const word of blockedWords) {
+    if (word && lower.includes(word.toLowerCase())) return word
+  }
+  return null
+}
+
+/**
+ * Returns true if the user is a moderator or creator of the given room.
+ */
+export function isModerator(room: Room | null, uid: string): boolean {
+  if (!room) return false
+  return room.createdBy === uid || (room.moderators || []).includes(uid)
 }

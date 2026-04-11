@@ -6,12 +6,13 @@ const { getMessaging } = require("firebase-admin/messaging");
 initializeApp();
 
 // Send push notification when a new room message is created
-exports.onNewRoomMessage = onDocumentCreated("messages/{messageId}", async (event) => {
+exports.onNewRoomMessage = onDocumentCreated("rooms/{roomId}/messages/{messageId}", async (event) => {
   const message = event.data.data();
   if (!message) return;
 
   const db = getFirestore();
   const messaging = getMessaging();
+  const roomId = event.params.roomId;
 
   // Get all users with FCM tokens who aren't the sender
   const usersSnap = await db.collection("users").get();
@@ -28,12 +29,12 @@ exports.onNewRoomMessage = onDocumentCreated("messages/{messageId}", async (even
 
   const payload = {
     notification: {
-      title: `${message.name} in #${message.room}`,
+      title: `${message.displayName || "Someone"} in #${roomId}`,
       body: message.text || "(sent a photo)",
     },
     data: {
       type: "room",
-      room: message.room,
+      room: roomId,
     },
   };
 
@@ -72,7 +73,8 @@ exports.onNewDMMessage = onDocumentCreated(
     if (!convoSnap.exists) return;
 
     const convo = convoSnap.data();
-    const otherUids = convo.participantIds.filter((uid) => uid !== message.uid);
+    // Schema uses `participants`, not `participantIds`
+    const otherUids = (convo.participants || []).filter((uid) => uid !== message.uid);
 
     // Get tokens for other participants
     const tokens = [];
@@ -87,7 +89,7 @@ exports.onNewDMMessage = onDocumentCreated(
 
     const payload = {
       notification: {
-        title: message.name,
+        title: message.displayName || "New message",
         body: message.text || "(sent a photo)",
       },
       data: {

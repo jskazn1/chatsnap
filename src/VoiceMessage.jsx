@@ -32,10 +32,25 @@ export function VoiceRecorder({ onSend }) {
         }
       }
 
+      const MAX_DURATION_S = 5 * 60 // 5-minute hard limit
+
       mediaRecorder.current.start()
       setRecording(true)
       setDuration(0)
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000)
+      timerRef.current = setInterval(() => {
+        setDuration(d => {
+          const next = d + 1
+          if (next >= MAX_DURATION_S) {
+            // Auto-stop when the limit is reached
+            if (mediaRecorder.current?.state === 'recording') {
+              mediaRecorder.current.stop()
+            }
+            clearInterval(timerRef.current)
+            setRecording(false)
+          }
+          return next
+        })
+      }, 1000)
     } catch {
       // Microphone permission denied
     }
@@ -54,49 +69,48 @@ export function VoiceRecorder({ onSend }) {
   const mins = Math.floor(duration / 60)
   const secs = duration % 60
 
-  return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
-      {recording ? (
-        <>
-          {/* Pulsing indicator */}
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-red-400 text-xs font-mono font-medium">
-              {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
-            </span>
-          </div>
-          {/* Waveform animation */}
-          <div className="flex items-center gap-0.5 flex-1">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-1 bg-indigo-400 rounded-full animate-pulse"
-                style={{
-                  height: `${8 + Math.sin(i * 0.8) * 6}px`,
-                  animationDelay: `${i * 0.1}s`,
-                  opacity: 0.6 + (i % 3) * 0.1,
-                }}
-              />
-            ))}
-          </div>
-          <button
-            onClick={stopRecording}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-400 text-white transition-colors flex-shrink-0"
-            title="Stop recording"
-          >
-            <FiSquare size={14} />
-          </button>
-        </>
-      ) : (
+  if (recording) {
+    return (
+      <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/80 border border-red-500/30 rounded-xl">
+        {/* Recording indicator */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-red-400 text-xs font-mono font-medium">
+            {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+          </span>
+        </div>
+        {/* Mini waveform */}
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-0.5 bg-violet-400 rounded-full animate-pulse"
+              style={{ height: `${6 + Math.sin(i * 0.9) * 4}px`, animationDelay: `${i * 0.12}s` }}
+            />
+          ))}
+        </div>
+        {/* Stop button */}
         <button
-          onClick={startRecording}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 text-sm transition-all"
+          onClick={stopRecording}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-400 text-white transition-colors shrink-0"
+          aria-label="Stop recording"
+          title="Stop recording"
         >
-          <FiMic size={15} />
-          <span>Record voice</span>
+          <FiSquare size={11} />
         </button>
-      )}
-    </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={startRecording}
+      className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+      aria-label="Record voice message"
+      title="Record voice message"
+    >
+      <FiMic size={18} />
+    </button>
   )
 }
 
@@ -154,7 +168,7 @@ export function VoicePlayer({ url, duration }) {
       <audio ref={audioRef} src={url} preload="metadata" />
       <button
         onClick={togglePlay}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex-shrink-0"
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-600 hover:bg-violet-500 text-white transition-colors flex-shrink-0"
       >
         {playing ? <FiPause size={14} /> : <FiPlay size={14} className="ml-0.5" />}
       </button>
@@ -166,7 +180,7 @@ export function VoicePlayer({ url, duration }) {
           onClick={handleSeek}
         >
           <div
-            className="absolute inset-y-0 left-0 bg-indigo-500 rounded-full transition-all"
+            className="absolute inset-y-0 left-0 bg-violet-500 rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>

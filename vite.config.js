@@ -10,11 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Surge — Real-time Messaging',
-        short_name: 'Surge',
-        description: 'Real-time chat and photo messaging app',
-        theme_color: '#6366f1',
-        background_color: '#0f172a',
+        name: 'Orbit — Every bit, in orbit.',
+        short_name: 'Orbit',
+        description: 'Real-time messaging reimagined. Every bit, in orbit.',
+        theme_color: '#7c3aed',
+        background_color: '#020617',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -25,6 +25,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Exclude Firebase's auth handler paths from the navigation fallback
+        // so the service worker never intercepts /__/auth/handler and serves
+        // index.html — that would break the Google OAuth popup/redirect flow.
+        navigateFallbackDenylist: [/^\/__\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,

@@ -1,20 +1,32 @@
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{imageId} {
-      // Authenticated users can read images
+
+    // ── Chat images (photos uploaded in rooms / DMs) ─────────────────────────
+    match /photos/{filename} {
       allow read: if request.auth != null;
 
-      // Authenticated users can upload images under 5MB
+      // Authenticated users can upload images up to 5 MB
       allow write: if request.auth != null
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
 
+    // ── Voice messages ────────────────────────────────────────────────────────
+    match /voice/{filename} {
+      allow read: if request.auth != null;
+
+      // Authenticated users can upload audio up to 10 MB
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
+    }
+
+    // ── User avatars ──────────────────────────────────────────────────────────
     match /avatars/{userId} {
       // Anyone authenticated can read avatars
       allow read: if request.auth != null;
 
-      // Users can only upload their own avatar
+      // Users can only upload their own avatar (images up to 2 MB)
       allow write: if request.auth != null
         && request.auth.uid == userId
         && request.resource.size < 2 * 1024 * 1024
